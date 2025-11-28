@@ -10,175 +10,267 @@
 
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'VT323', monospace; overflow: hidden; }
-        .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
+        .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; }
         @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
         .crt-flicker { animation: flicker 0.15s infinite; }
-        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
-        .choice-btn:hover:not(:disabled) { background-color: #00ff41; color: #000; cursor: pointer; }
-        .choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .hud-box { border: 1px solid #004400; background: #001100; padding: 0 8px; }
+        /* UI COMPONENTS */
+        .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.9); padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-main { border: 1px solid #00ff41; padding: 10px; text-align: left; transition: all 0.2s; cursor: pointer; text-transform: uppercase; }
+        .btn-main:hover:not(:disabled) { background: #00ff41; color: black; }
+        .btn-main:disabled { opacity: 0.5; cursor: not-allowed; border-color: #444; color: #444; }
+        
+        .tab-btn { flex: 1; text-align: center; border-bottom: 2px solid #004400; color: #004400; cursor: pointer; padding: 5px; }
+        .tab-btn.active { border-bottom-color: #00ff41; color: #00ff41; }
+
+        .inv-item { font-size: 0.9rem; padding: 4px; border-bottom: 1px dashed #004400; cursor: help; }
+        .inv-item:hover { color: #ccffcc; }
 
         .char-card { border: 1px solid #004400; padding: 15px; cursor: pointer; transition: all 0.3s; opacity: 0.7; }
         .char-card:hover { border-color: #00ff41; opacity: 1; transform: scale(1.02); background: #001100; }
         .char-card.selected { border-color: #00ff41; background: #002200; opacity: 1; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
-
-        .travel-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #004400; padding: 12px; margin-bottom: 8px; transition: all 0.2s; }
-        .travel-item.unlocked:hover { background: #002200; border-color: #00ff41; cursor: pointer; }
-        .travel-item.locked { opacity: 0.5; border-color: #330000; color: #555; cursor: not-allowed; }
-        .travel-item.current { background: #00ff41; color: black; border-color: #00ff41; cursor: default; }
-
-        /* COMBAT STYLES */
-        .combat-mode { border-color: red !important; box-shadow: 0 0 20px rgba(255,0,0,0.2); }
-        .combat-text { color: #ff4444; }
-        .combat-bar { transition: width 0.3s ease; }
+        
+        /* OVERLAYS */
+        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 60; display: flex; align-items: center; justify-content: center; }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="h-screen w-screen flex items-center justify-center crt-flicker">
+<body class="h-screen w-screen flex flex-col p-2 crt-flicker gap-2">
+    <div class="scanlines"></div>
 
-    <div id="main-frame" class="relative w-full max-w-5xl h-[95vh] border-4 border-[#003300] bg-black p-4 rounded-md flex flex-col gap-3 transition-colors duration-500">
-        <div class="scanlines"></div>
-        
-        <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80">
-            <span>NEON_PROTOCOL // V.10.0</span>
-            <span id="current-loc-display" class="text-yellow-400">LOC: UNKNOWN</span>
+    <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0">
+        <span>NEON_PROTOCOL // V.12.0</span>
+        <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
+    </div>
+
+    <div id="lang-screen" class="overlay">
+        <div class="text-center flex flex-col gap-4">
+            <h1 class="text-4xl text-[#00ff41] tracking-widest animate-pulse">SELECT LANGUAGE / 语言 / 言語</h1>
+            <div class="grid grid-cols-2 gap-4 w-64 mx-auto">
+                <button onclick="selectLang('English')" class="btn-main text-center">ENGLISH</button>
+                <button onclick="selectLang('Spanish')" class="btn-main text-center">ESPAÑOL</button>
+                <button onclick="selectLang('Japanese')" class="btn-main text-center">日本語</button>
+                <button onclick="selectLang('Hindi')" class="btn-main text-center">हिंदी</button>
+            </div>
         </div>
+    </div>
 
-        <div id="char-creation-screen" class="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center gap-6 p-4 overflow-y-auto">
-            <h1 class="text-4xl text-[#00ff41] tracking-widest animate-pulse mt-10">SELECT ARCHETYPE</h1>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl">
+    <div id="char-screen" class="overlay hidden">
+        <div class="flex flex-col items-center gap-6 p-4 w-full max-w-6xl h-full overflow-y-auto">
+            <h1 class="text-4xl text-[#00ff41] mt-10">SELECT ARCHETYPE</h1>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 <div class="char-card" onclick="selectChar('RAVEN', this)">
-                    <h2 class="text-2xl font-bold mb-2">RAVEN</h2>
-                    <p class="text-sm text-gray-400">Detective. Justice-obsessed. Starts in Neo-Kowloon.</p>
+                    <h2 class="text-2xl font-bold">RAVEN</h2>
+                    <p class="text-sm text-gray-400">Detective. Start: Neo-Kowloon.</p>
                 </div>
                 <div class="char-card" onclick="selectChar('I-6', this)">
-                    <h2 class="text-2xl font-bold mb-2">UNIT I-6</h2>
-                    <p class="text-sm text-gray-400">Rogue AI. Fighting for consciousness. Starts in Scrapyard.</p>
+                    <h2 class="text-2xl font-bold">UNIT I-6</h2>
+                    <p class="text-sm text-gray-400">Rogue AI. Start: Scrapyard.</p>
                 </div>
                 <div class="char-card" onclick="selectChar('CUSTOM', this)">
-                    <h2 class="text-2xl font-bold mb-2">THE ANOMALY</h2>
-                    <p class="text-sm text-gray-400">Define your own origin.</p>
+                    <h2 class="text-2xl font-bold">THE ANOMALY</h2>
+                    <p class="text-sm text-gray-400">Custom Origin.</p>
                 </div>
             </div>
-            <div id="custom-input-area" class="w-full max-w-2xl hidden flex-col gap-2 border-t border-[#004400] pt-4">
-                <input type="text" id="custom-name" class="bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41]" placeholder="NAME">
-                <input type="text" id="custom-desc" class="bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41]" placeholder="BACKSTORY">
+            
+            <div id="custom-input" class="w-full max-w-2xl hidden flex-col gap-2">
+                <input id="c-name" class="bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41]" placeholder="NAME">
+                <input id="c-desc" class="bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41]" placeholder="BACKSTORY">
             </div>
-            <button id="jack-in-btn" class="border border-[#00ff41] p-3 hover:bg-[#00ff41] hover:text-black uppercase tracking-widest w-full max-w-xs text-xl font-bold disabled:opacity-50" disabled>INITIALIZE LINK</button>
+            <button id="start-game-btn" class="btn-main w-64 text-center font-bold text-xl" disabled>JACK IN</button>
+        </div>
+    </div>
+
+    <div id="game-ui" class="hidden flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 overflow-hidden relative z-10">
+        
+        <div class="panel md:col-span-3">
+            <div class="text-center border-b border-[#004400] pb-2 text-[#00ff41] font-bold">STATUS</div>
+            <div class="flex justify-between"><span>HP</span><span id="hp-val" class="text-red-500">100</span></div>
+            <div class="flex justify-between"><span>CRED</span><span id="cred-val" class="text-yellow-400">50</span></div>
+            
+            <div class="mt-auto flex flex-col gap-2">
+                <button id="btn-map" class="btn-main text-center text-yellow-500 border-yellow-500">TRANSIT MAP</button>
+                <button id="btn-case" class="btn-main text-center text-cyan-500 border-cyan-500">CASE FILE</button>
+                <button id="btn-help" class="btn-main text-center text-gray-400 border-gray-400">DATABASE / HELP</button>
+            </div>
         </div>
 
-        <div id="game-ui" class="hidden flex-1 flex flex-col gap-4 h-full relative z-10">
-            <div class="flex flex-row gap-2 text-lg">
-                <div class="hud-box flex-1">HP: <span id="hp-display" class="text-red-500">100</span></div>
-                <div class="hud-box flex-1">CRED: <span id="credits-display" class="text-yellow-400">50</span></div>
-                <button id="map-toggle-btn" class="hud-box flex-1 text-center hover:bg-[#00ff41] hover:text-black cursor-pointer border-yellow-500 text-yellow-500">TRANSIT</button>
+        <div class="panel md:col-span-6 overflow-hidden">
+            <div id="img-container" class="h-64 border border-[#004400] bg-black flex items-center justify-center overflow-hidden shrink-0">
+                <span class="opacity-50">NO SIGNAL</span>
+            </div>
+            
+            <div id="enemy-hud" class="hidden border border-red-600 bg-[#1a0000] p-1 flex-col">
+                <div class="flex justify-between text-red-500 text-xs">
+                    <span id="enemy-name">TARGET</span><span id="enemy-hp">100%</span>
+                </div>
+                <div class="w-full h-1 bg-[#330000] mt-1"><div id="enemy-bar" class="h-full bg-red-600 w-full transition-all"></div></div>
             </div>
 
-            <div id="enemy-hud" class="hidden border border-red-600 bg-[#1a0000] p-2 flex-col gap-1">
-                <div class="flex justify-between text-red-500 text-sm">
-                    <span id="enemy-name">UNKNOWN HOSTILE</span>
-                    <span id="enemy-hp-text">100%</span>
-                </div>
-                <div class="w-full h-2 bg-[#330000]">
-                    <div id="enemy-hp-bar" class="h-full bg-red-600 w-full combat-bar"></div>
-                </div>
-            </div>
+            <div id="story-log" class="flex-1 overflow-y-auto text-lg leading-relaxed whitespace-pre-line p-2 text-gray-300 font-sans"></div>
 
-            <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative">
-                
-                <div id="travel-screen" class="hidden absolute inset-0 bg-black/95 z-40 border border-[#00ff41] flex items-center justify-center p-8">
-                    <div class="w-full max-w-2xl border border-[#004400] bg-[#001100] p-6 flex flex-col gap-4 h-[80vh]">
-                        <div class="flex justify-between items-center border-b border-[#004400] pb-2">
-                            <h2 class="text-2xl text-[#00ff41] tracking-widest">RAPID TRANSIT NETWORK</h2>
-                            <button id="close-map-btn" class="text-red-500 border border-red-500 px-3">[ CLOSE ]</button>
-                        </div>
-                        <div id="city-list" class="flex flex-col gap-2 overflow-y-auto"></div>
+            <div id="choices-area" class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#004400]"></div>
+            
+            <div id="puzzle-area" class="hidden flex gap-2 mt-2">
+                <input id="puzzle-in" class="flex-1 bg-[#001100] border border-red-500 text-red-500 p-2" placeholder="DECRYPT...">
+                <button id="puzzle-btn" class="btn-main border-red-500 text-red-500">SEND</button>
+            </div>
+        </div>
+
+        <div class="panel md:col-span-3">
+            <div class="flex text-sm">
+                <div class="tab-btn active" onclick="switchTab('weapons')">WEAPONS</div>
+                <div class="tab-btn" onclick="switchTab('items')">ITEMS</div>
+                <div class="tab-btn" onclick="switchTab('memories')">MEMORIES</div>
+            </div>
+            <div id="inv-list" class="flex-1 overflow-y-auto content-start flex flex-col gap-1 p-1">
+                </div>
+            <div id="item-info" class="h-24 border-t border-[#004400] p-2 text-xs text-gray-400 italic">
+                Hover over an item or consult Database for details.
+            </div>
+        </div>
+    </div>
+
+    <div id="map-overlay" class="overlay hidden">
+        <div class="panel w-full max-w-2xl h-3/4">
+            <div class="flex justify-between border-b border-[#00ff41] pb-2">
+                <h2 class="text-xl">TRANSIT NETWORK</h2>
+                <button onclick="closeOverlay('map-overlay')" class="text-red-500">[X]</button>
+            </div>
+            <div id="city-list" class="flex flex-col gap-2 overflow-y-auto p-4"></div>
+        </div>
+    </div>
+
+    <div id="summary-overlay" class="overlay hidden">
+        <div class="panel w-full max-w-3xl h-3/4 border-cyan-500">
+            <div class="flex justify-between border-b border-cyan-500 pb-2">
+                <h2 class="text-xl text-cyan-500">CASE FILE</h2>
+                <button onclick="closeOverlay('summary-overlay')" class="text-cyan-500">[X]</button>
+            </div>
+            <div id="summary-text" class="whitespace-pre-wrap text-cyan-400 p-4 overflow-y-auto">LOADING...</div>
+        </div>
+    </div>
+
+    <div id="help-overlay" class="overlay hidden">
+        <div class="panel w-full max-w-3xl h-3/4 border-gray-400">
+            <div class="flex justify-between border-b border-gray-400 pb-2">
+                <h2 class="text-xl text-gray-400">DATABASE</h2>
+                <button onclick="closeOverlay('help-overlay')" class="text-gray-400">[X]</button>
+            </div>
+            <div class="grid grid-cols-3 gap-4 h-full overflow-hidden p-2">
+                <div class="col-span-1 border-r border-[#004400] flex flex-col gap-2 overflow-y-auto" id="help-topics">
                     </div>
+                <div class="col-span-2 p-2 overflow-y-auto text-sm" id="help-content">
+                    Select a topic to read entry.
                 </div>
-
-                <div class="w-full md:w-1/2 flex flex-col gap-2">
-                    <div id="image-container" class="flex-1 border border-[#004400] bg-[#001100] flex items-center justify-center overflow-hidden">
-                        <span class="opacity-50">INITIALIZING...</span>
-                    </div>
-                </div>
-                <div class="w-full md:w-1/2 flex flex-col">
-                    <div id="story-text" class="flex-1 overflow-y-auto text-lg leading-relaxed whitespace-pre-line p-2 border-l border-[#004400]"></div>
-                </div>
-            </div>
-
-            <div id="interaction-area" class="border-t border-[#00ff41] pt-4 min-h-[120px]">
-                <div id="choice-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
         </div>
     </div>
 
     <script>
-    let selectedArchetype = null;
-    function selectChar(type, element) {
-        selectedArchetype = type;
-        document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
-        element.classList.add('selected');
-        document.getElementById('custom-input-area').classList.toggle('hidden', type !== 'CUSTOM');
-        document.getElementById('jack-in-btn').disabled = false;
+    // --- STATIC DATA ---
+    const DB_LORE = {
+        "Service Revolver": "Standard issue .45 caliber. Reliable, kinetic, messy.",
+        "Arc Welder": "Modified industrial tool. Delivers 50,000 volts at short range.",
+        "Datapad": "Standard handheld computer. Essential for reading shards.",
+        "Health Stick": "Injectable nano-gel. Clots wounds instantly.",
+        "Victim's Face": "Memory: The frozen expression of the body found in sector 4.",
+        "Awakening Code": "Memory: The string of numbers that granted you sentience.",
+        "Neo-Kowloon": "The oldest sector. Dense, rainy, and ruled by Triads.",
+        "Combat": "Turn-based. Damage is calculated based on weapon stats and RNG."
+    };
+
+    // --- STATE ---
+    let state = {
+        lang: 'English',
+        history: [],
+        currentCity: '',
+        stats: { hp: 100, credits: 50 },
+        inventory: { weapons: [], items: [], memories: [] },
+        unlockedCities: [],
+        enemyStats: null,
+        activeTab: 'weapons',
+        profile: {}
+    };
+
+    let selectedArch = null;
+
+    // --- INIT ---
+    function selectLang(l) {
+        state.lang = l;
+        document.getElementById('lang-screen').classList.add('hidden');
+        document.getElementById('char-screen').classList.remove('hidden');
+        document.getElementById('char-screen').classList.add('flex'); // Enable flex layout
     }
 
-    class CyberpunkRPG {
+    function selectChar(type, el) {
+        selectedArch = type;
+        document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('custom-input').classList.toggle('hidden', type !== 'CUSTOM');
+        document.getElementById('start-game-btn').disabled = false;
+    }
+
+    // --- GAME ENGINE ---
+    class Game {
         constructor() {
-            this.history = [];
-            this.currentCity = ""; 
-            this.unlockedCities = [];
-            this.stats = { hp: 100, credits: 50 };
-            this.enemyStats = null; // Current enemy data
-            this.playerProfile = {};
-            this.allCities = ["Neo-Kowloon", "The Scrapyard", "Solaris District", "Trantor Deep", "Ubik Reality", "Magrathea Heights", "The Zone"];
-
-            this.ui = {
-                frame: document.getElementById('main-frame'),
-                charScreen: document.getElementById('char-creation-screen'),
-                game: document.getElementById('game-ui'),
-                travel: document.getElementById('travel-screen'),
-                cityList: document.getElementById('city-list'),
-                locDisplay: document.getElementById('current-loc-display'),
-                story: document.getElementById('story-text'),
-                img: document.getElementById('image-container'),
-                choices: document.getElementById('choice-container'),
-                hp: document.getElementById('hp-display'),
-                cred: document.getElementById('credits-display'),
-                enemyHud: document.getElementById('enemy-hud'),
-                enemyName: document.getElementById('enemy-name'),
-                enemyBar: document.getElementById('enemy-hp-bar')
-            };
-
-            this.init();
+            this.initListeners();
+            this.populateHelp();
         }
 
-        init() {
-            document.getElementById('jack-in-btn').addEventListener('click', () => {
-                if (selectedArchetype === 'RAVEN') {
-                    this.playerProfile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir trenchcoat, smoking" };
-                    this.unlockedCities = ["Neo-Kowloon"];
-                } else if (selectedArchetype === 'I-6') {
-                    this.playerProfile = { name: "I-6", archetype: "I-6", class: "Robot", style: "Rusted metal chassis" };
-                    this.unlockedCities = ["The Scrapyard"];
-                } else {
-                    const name = document.getElementById('custom-name').value || "Drifter";
-                    const desc = document.getElementById('custom-desc').value || "A generic cyberpunk citizen";
-                    this.playerProfile = { name: name, archetype: "CUSTOM", class: "Custom", style: desc, backstory: desc };
-                    this.unlockedCities = ["Neo-Kowloon"];
-                }
+        initListeners() {
+            document.getElementById('start-game-btn').onclick = () => this.startGame();
+            
+            // Nav Buttons
+            document.getElementById('btn-map').onclick = () => {
+                if(state.enemyStats) return; 
+                document.getElementById('map-overlay').classList.remove('hidden');
+                this.renderMap();
+            };
+            document.getElementById('btn-case').onclick = () => {
+                document.getElementById('summary-overlay').classList.remove('hidden');
+                this.fetchSummary();
+            };
+            document.getElementById('btn-help').onclick = () => {
+                document.getElementById('help-overlay').classList.remove('hidden');
+            };
 
-                this.ui.charScreen.classList.add('hidden');
-                this.ui.game.classList.remove('hidden');
-                this.startSound();
-                this.makeTurn("");
-            });
+            // Puzzle
+            document.getElementById('puzzle-btn').onclick = () => {
+                const val = document.getElementById('puzzle-in').value;
+                document.getElementById('puzzle-in').value = '';
+                this.turn(`Puzzle Answer: ${val}`);
+            };
+        }
 
-            document.getElementById('map-toggle-btn').addEventListener('click', () => {
-                if(this.enemyStats) return; // No travel in combat
-                this.ui.travel.classList.remove('hidden');
-                this.renderTravelList();
-            });
-            document.getElementById('close-map-btn').addEventListener('click', () => this.ui.travel.classList.add('hidden'));
+        startGame() {
+            // Set Initial Inventory based on Class
+            if (selectedArch === 'RAVEN') {
+                state.profile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir" };
+                state.inventory.weapons.push("Service Revolver");
+                state.inventory.memories.push("Victim's Face");
+                state.unlockedCities = ["Neo-Kowloon"];
+            } else if (selectedArch === 'I-6') {
+                state.profile = { name: "I-6", archetype: "I-6", class: "Robot", style: "Rusted" };
+                state.inventory.weapons.push("Arc Welder");
+                state.inventory.memories.push("Awakening Code");
+                state.unlockedCities = ["The Scrapyard"];
+            } else {
+                const n = document.getElementById('c-name').value || "V";
+                const d = document.getElementById('c-desc').value || "Drifter";
+                state.profile = { name: n, archetype: "CUSTOM", class: "Custom", style: d, backstory: d };
+                state.inventory.items.push("Datapad");
+                state.unlockedCities = ["Neo-Kowloon"];
+            }
+
+            document.getElementById('char-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            document.getElementById('game-ui').classList.add('grid');
+            
+            this.startSound();
+            this.renderInventory();
+            this.turn("");
         }
 
         async startSound() {
@@ -187,129 +279,203 @@
             synth.triggerAttackRelease(["C2", "G2"], "4n");
         }
 
-        renderTravelList() {
-            this.ui.cityList.innerHTML = '';
-            this.allCities.forEach(city => {
-                const isUnlocked = this.unlockedCities.includes(city);
-                const isCurrent = (city === this.currentCity);
-                const div = document.createElement('div');
-                div.className = `travel-item ${isCurrent ? 'current' : (isUnlocked ? 'unlocked' : 'locked')}`;
-                let statusText = isCurrent ? "[CURRENT]" : (isUnlocked ? ">> ACCESS GRANTED" : "XX LOCKED");
-                
-                div.innerHTML = `<div><span class="font-bold text-lg">${city.toUpperCase()}</span><div class="text-xs">${statusText}</div></div>`;
-                if (isUnlocked && !isCurrent) {
-                    div.onclick = () => {
-                        this.currentCity = city;
-                        this.ui.travel.classList.add('hidden');
-                        this.ui.locDisplay.innerText = `LOC: ${city.toUpperCase()}`;
-                        this.makeTurn(`Travel to ${city}. Describe arrival.`);
-                    };
-                }
-                this.ui.cityList.appendChild(div);
-            });
-        }
-
-        async makeTurn(action) {
-            this.ui.choices.innerHTML = '<div class="text-[#00ff41] animate-pulse">PROCESSING...</div>';
+        async turn(action) {
+            const choicesDiv = document.getElementById('choices-area');
+            choicesDiv.innerHTML = '<div class="text-[#00ff41] animate-pulse col-span-2">UPLINKING...</div>';
 
             try {
                 const res = await fetch('/api/turn', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        history: this.history,
+                        history: state.history,
                         userAction: action,
-                        currentStats: this.stats,
-                        playerProfile: this.playerProfile,
-                        currentCity: this.currentCity,
-                        enemyStats: this.enemyStats // Send combat state
+                        currentStats: state.stats,
+                        playerProfile: state.profile,
+                        currentCity: state.currentCity,
+                        enemyStats: state.enemyStats,
+                        language: state.lang,
+                        inventory: state.inventory
                     })
                 });
 
                 const data = await res.json();
                 
-                // State Updates
-                if (data.stats) this.stats = data.stats;
-                this.ui.hp.innerText = this.stats.hp;
-                this.ui.cred.innerText = this.stats.credits;
-                if (data.currentCity) {
-                    this.currentCity = data.currentCity;
-                    if (!this.unlockedCities.includes(this.currentCity)) this.unlockedCities.push(this.currentCity);
-                }
-                this.ui.locDisplay.innerText = `LOC: ${this.currentCity.toUpperCase()}`;
-
-                // COMBAT LOGIC
-                if (data.inCombat && data.enemyStats) {
-                    this.enemyStats = data.enemyStats;
-                    this.ui.enemyHud.classList.remove('hidden');
-                    this.ui.enemyHud.classList.add('flex');
-                    this.ui.enemyName.innerText = this.enemyStats.name.toUpperCase();
-                    const hpPercent = (this.enemyStats.hp / this.enemyStats.maxHp) * 100;
-                    this.ui.enemyBar.style.width = `${Math.max(0, hpPercent)}%`;
-                    
-                    // Style change for combat
-                    this.ui.frame.classList.add('border-red-600');
-                    document.body.style.color = '#ff4444';
-                } else {
-                    this.enemyStats = null;
-                    this.ui.enemyHud.classList.add('hidden');
-                    this.ui.enemyHud.classList.remove('flex');
-                    this.ui.frame.classList.remove('border-red-600');
-                    document.body.style.color = '#00ff41';
-                }
-
-                if (data.caseSolved) {
-                    const locked = this.allCities.filter(c => !this.unlockedCities.includes(c));
-                    if (locked.length > 0) {
-                        this.unlockedCities.push(locked[0]);
-                        data.narrative += `\n\n[SYSTEM]: NEW SECTOR UNLOCKED: ${locked[0].toUpperCase()}.`;
-                    }
-                }
-
-                this.history.push({ role: 'user', content: action || "Start" });
-                this.history.push({ role: 'model', content: data.narrative });
-
-                if (data.imageUrl) {
-                    this.ui.img.innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
+                // Update Logic
+                if (data.stats) {
+                    state.stats = data.stats;
+                    document.getElementById('hp-val').innerText = state.stats.hp;
+                    document.getElementById('cred-val').innerText = state.stats.credits;
                 }
                 
-                await this.typeText(data.narrative);
+                if (data.currentCity) {
+                    state.currentCity = data.currentCity;
+                    if(!state.unlockedCities.includes(data.currentCity)) state.unlockedCities.push(data.currentCity);
+                    document.getElementById('current-loc-display').innerText = `LOC: ${state.currentCity.toUpperCase()}`;
+                }
 
-                this.ui.choices.innerHTML = '';
-                if(data.isGameOver) {
-                    this.ui.choices.innerHTML = `<button onclick="location.reload()" class="choice-btn col-span-2 text-red-500 border-red-500">FLATLINED // REBOOT</button>`;
+                // Inventory Updates from Server
+                if (data.inventoryUpdates) {
+                    if(data.inventoryUpdates.add) {
+                        data.inventoryUpdates.add.forEach(i => {
+                            if(state.inventory[i.category]) state.inventory[i.category].push(i.item);
+                        });
+                    }
+                    // Implement remove logic if needed
+                    this.renderInventory();
+                }
+
+                state.history.push({ role: 'user', content: action || "Start" });
+                state.history.push({ role: 'model', content: data.narrative });
+
+                // Render Visuals
+                if (data.imageUrl) {
+                    document.getElementById('img-container').innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
+                }
+
+                // Render Text
+                this.typeText(data.narrative);
+
+                // Combat
+                if (data.inCombat && data.enemyStats) {
+                    state.enemyStats = data.enemyStats;
+                    document.getElementById('enemy-hud').classList.remove('hidden');
+                    document.getElementById('enemy-hud').classList.add('flex');
+                    document.getElementById('enemy-name').innerText = state.enemyStats.name;
+                    const pct = (state.enemyStats.hp / state.enemyStats.maxHp) * 100;
+                    document.getElementById('enemy-bar').style.width = `${Math.max(0,pct)}%`;
                 } else {
+                    state.enemyStats = null;
+                    document.getElementById('enemy-hud').classList.add('hidden');
+                    document.getElementById('enemy-hud').classList.remove('flex');
+                }
+
+                // Choices / Puzzle
+                choicesDiv.innerHTML = '';
+                if(data.isGameOver) {
+                    choicesDiv.innerHTML = `<button onclick="location.reload()" class="btn-main text-red-500 border-red-500 col-span-2">FLATLINED // REBOOT</button>`;
+                } else if(data.uiLocked) {
+                    document.getElementById('puzzle-area').classList.remove('hidden');
+                    document.getElementById('puzzle-in').placeholder = data.puzzleQuestion || "SOLVE...";
+                } else {
+                    document.getElementById('puzzle-area').classList.add('hidden');
                     data.choices.forEach(c => {
                         const btn = document.createElement('button');
-                        btn.className = "choice-btn border border-[#00ff41] p-3 text-left uppercase";
-                        // If in combat, make buttons red
-                        if(this.enemyStats) btn.className = "choice-btn border border-red-500 text-red-500 p-3 text-left uppercase hover:bg-red-900";
-                        
+                        btn.className = state.enemyStats ? "btn-main border-red-500 text-red-500" : "btn-main";
                         btn.innerText = `> ${c}`;
-                        btn.onclick = () => this.makeTurn(c);
-                        this.ui.choices.appendChild(btn);
+                        btn.onclick = () => this.turn(c);
+                        choicesDiv.appendChild(btn);
                     });
                 }
 
             } catch (e) {
                 console.error(e);
-                this.ui.story.innerText = "CONNECTION FAILURE.";
+                choicesDiv.innerText = "CONNECTION FAILURE.";
             }
         }
 
         async typeText(text) {
-            this.ui.story.innerHTML = '';
+            const el = document.getElementById('story-log');
+            el.innerHTML = '';
             let h = '';
             for(let c of text) {
                 h += c;
-                this.ui.story.innerHTML = h + '_';
-                await new Promise(r=>setTimeout(r, 5));
+                el.innerHTML = h + '<span class="animate-pulse">_</span>';
+                await new Promise(r=>setTimeout(r, 2));
             }
-            this.ui.story.innerHTML = h;
+            el.innerHTML = h;
+            el.scrollTop = el.scrollHeight;
+        }
+
+        renderInventory() {
+            const list = document.getElementById('inv-list');
+            list.innerHTML = '';
+            const items = state.inventory[state.activeTab] || [];
+            
+            if(items.length === 0) list.innerHTML = '<div class="text-gray-500 italic p-2">Empty...</div>';
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'inv-item';
+                div.innerText = item;
+                div.onmouseenter = () => {
+                    const desc = DB_LORE[item] || "No data available in database.";
+                    document.getElementById('item-info').innerText = desc;
+                };
+                list.appendChild(div);
+            });
+        }
+
+        renderMap() {
+            const list = document.getElementById('city-list');
+            list.innerHTML = '';
+            const allCities = ["Neo-Kowloon", "The Scrapyard", "Solaris District", "Trantor Deep", "Ubik Reality", "The Zone"];
+            
+            allCities.forEach(city => {
+                const div = document.createElement('div');
+                const isUnlocked = state.unlockedCities.includes(city);
+                const isCurrent = state.currentCity === city;
+                
+                div.className = `p-2 border mb-2 flex justify-between ${isCurrent ? 'bg-[#00ff41] text-black border-[#00ff41]' : (isUnlocked ? 'border-[#00ff41] hover:bg-[#002200] cursor-pointer' : 'border-[#330000] text-gray-600 opacity-50 cursor-not-allowed')}`;
+                div.innerHTML = `<span>${city.toUpperCase()}</span><span>${isCurrent ? 'CURRENT' : (isUnlocked ? 'GO >>' : 'LOCKED')}</span>`;
+                
+                if(isUnlocked && !isCurrent) {
+                    div.onclick = () => {
+                        closeOverlay('map-overlay');
+                        this.turn(`Travel to ${city}.`);
+                    };
+                }
+                list.appendChild(div);
+            });
+        }
+
+        async fetchSummary() {
+            const el = document.getElementById('summary-text');
+            el.innerText = "DECRYPTING...";
+            try {
+                const res = await fetch('/api/summary', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({history: state.history, language: state.lang})
+                });
+                const data = await res.json();
+                el.innerText = data.summary;
+            } catch(e) { el.innerText = "ERROR."; }
+        }
+
+        populateHelp() {
+            const topics = Object.keys(DB_LORE);
+            const list = document.getElementById('help-topics');
+            list.innerHTML = '';
+            topics.forEach(t => {
+                const d = document.createElement('div');
+                d.className = "p-1 cursor-pointer hover:bg-[#00ff41] hover:text-black text-xs";
+                d.innerText = t;
+                d.onclick = () => document.getElementById('help-content').innerText = DB_LORE[t];
+                list.appendChild(d);
+            });
         }
     }
 
-    new CyberpunkRPG();
+    // --- GLOBAL HELPERS ---
+    function switchTab(t) {
+        state.activeTab = t;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        new Game().renderInventory(); // Re-render logic attached to instance actually, but simplified here
+        // Note: Ideally Game instance should be global or singleton.
+        // Fixing scope for tab switch:
+        window.gameInstance.renderInventory();
+    }
+
+    function closeOverlay(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    // Initialize Global Instance
+    window.onload = () => {
+        window.gameInstance = new Game();
+    };
     </script>
 </body>
 </html>
