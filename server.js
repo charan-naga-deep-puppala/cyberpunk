@@ -5,6 +5,7 @@ const path = require('path');
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
+// Use the port Render assigns, or 3000 locally
 const port = process.env.PORT || 3000;
 
 app.use(cors());
@@ -19,10 +20,11 @@ const enemyRegistry = new Map();
 // --- GAME MASTER PERSONA ---
 const SYSTEM_INSTRUCTION = `
 You are the witty, cynical Game Master of a "Cyberpunk Noir" RPG.
-1. ENEMY: If a named enemy appears, output "enemyName".
-2. UI LOCK: If the player is hacked, set "uiLocked": true and provide a "puzzleQuestion".
-3. OUTPUT: JSON only.
-4. MEMORY: Remember past interactions.
+1. CONTEXT: The player is defined by the "PLAYER PROFILE". Use their class/style in narration.
+2. ENEMY: If a named enemy appears, output "enemyName". If generic, leave null.
+3. UI LOCK: If the player is hacked/stunned, set "uiLocked": true and provide a "puzzleQuestion".
+   - When UI is locked, "choices" must be empty [].
+4. MEMORY: Remember past insults and actions.
 
 JSON FORMAT:
 {
@@ -42,9 +44,10 @@ async function generateImagenImage(prompt) {
     try {
         console.log(">> Requesting Image from Imagen...");
         
-        // Use 'imagen-3.0-generate-001' (Standard)
+        // Use 'imagen-3.0-generate-001' (Standard). 
+        // If you have early access, you can change this to 'imagen-4.0-generate-001'
         const response = await ai.models.generateImages({
-            model: 'imagen-4.0-generate-001', 
+            model: 'imagen-3.0-generate-001', 
             prompt: "Cyberpunk noir style, cinematic lighting, high contrast. " + prompt,
             config: { 
                 numberOfImages: 1,
@@ -58,7 +61,7 @@ async function generateImagenImage(prompt) {
 
     } catch (error) {
         console.warn(">> Imagen Error (Falling back):", error.message);
-        // Fallback to Pollinations if Imagen fails or is not enabled
+        // Fallback to Pollinations if Imagen fails or is not enabled on key
         const seed = Math.floor(Math.random() * 9999);
         return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
     }
@@ -67,17 +70,23 @@ async function generateImagenImage(prompt) {
 // --- MAIN TURN ENDPOINT ---
 app.post('/api/turn', async (req, res) => {
     try {
-        const { history, userAction, currentStats } = req.body;
-        console.log(`Action: ${userAction}`);
+        const { history, userAction, currentStats, playerProfile } = req.body;
+        console.log(`Action: ${userAction} | Class: ${playerProfile?.class}`);
 
         // 1. GENERATE STORY
         let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n\n`;
+        
+        // Inject Player Profile
+        if (playerProfile) {
+            fullPrompt += `PLAYER PROFILE:\nName: ${playerProfile.name}\nClass: ${playerProfile.class}\nStyle: ${playerProfile.style}\n\n`;
+        }
+
         fullPrompt += `STATUS: HP=${currentStats.hp} | CREDITS=${currentStats.credits}\n`;
         fullPrompt += `HISTORY:\n`;
         history.slice(-10).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER: ${userAction}\nGM (JSON):`;
 
-        // Use 'gemini-1.5-flash' (Most reliable) or 'gemini-2.0-flash' (Newer)
+        // Use 'gemini-1.5-flash' (Reliable & Fast)
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
@@ -87,15 +96,20 @@ app.post('/api/turn', async (req, res) => {
             }
         });
 
-        // FIX: Access .text() directly (or .text property) depending on SDK version
-        // The new SDK usually exposes it as a getter property .text
+        // New SDK uses .text getter
         const jsonText = textResponse.text; 
         const gameData = JSON.parse(jsonText);
 
         // 2. GENERATE IMAGE
         let finalImageUrl = "";
         
-        if (gameData.enemyName) {
+        // Logic: Is this the start? Is it an enemy? Or a scene?
+        const isFirstTurn = history.length === 0;
+
+        if (isFirstTurn) {
+            console.log("Generating Player Avatar...");
+            finalImageUrl = await generateImagenImage(`Character portrait of ${playerProfile.name}, a ${playerProfile.class} wearing ${playerProfile.style}`);
+        } else if (gameData.enemyName) {
             const slug = gameData.enemyName.trim().toLowerCase().replace(/\s+/g, '-');
             if (enemyRegistry.has(slug)) {
                 console.log(`Using cached image for ${gameData.enemyName}`);
@@ -129,5 +143,4 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => {
     console.log(`GenAI Server running on http://localhost:${port}`);
-
 });
