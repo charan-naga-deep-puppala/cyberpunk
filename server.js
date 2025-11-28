@@ -28,9 +28,8 @@ const CITIES = {
 const SYSTEM_INSTRUCTION = `
 You are the Game Master of a specialized Text RPG.
 
-### OUTPUT FORMAT (SCREENPLAY STYLE):
+### OUTPUT FORMAT :
 - **DO NOT** write block paragraphs.
-- Use: **LOCATION:**, **ACTION:**, **DIALOGUE:**.
 - Keep length consistent: roughly 80-120 words per turn. Not too short, not a novel.
 - Use *sound effects* (e.g. *Hiss*, *Thud*).
 
@@ -39,7 +38,7 @@ You are the Game Master of a specialized Text RPG.
 - **0-25%:** Introduction. Establish the world.
 - **25-75%:** Rising Action. Challenges and Clues.
 - **75-90%:** Climax. High stakes.
-- **90-100%:** Conclusion. Force the ending.
+- **90-100%:** Conclusion. dont Force the ending if it suits the lore.
 
 ### SPECIAL STORIES (CURATED):
 - If Archetype is **"GARGANTUS"**: 
@@ -196,3 +195,4 @@ app.post('/api/summary', async (req, res) => {
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.listen(port, () => console.log(`Server running on port ${port}`));
+
