@@ -9,88 +9,76 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
-        /* BASE STYLES */
         body { background-color: #050505; color: #00ff41; font-family: 'VT323', monospace; overflow: hidden; }
-        
-        /* CRT EFFECTS (Z-Index 50) */
         .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; }
-        .crt-flicker { animation: flicker 0.15s infinite; }
         @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
+        .crt-flicker { animation: flicker 0.15s infinite; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
-        /* SCROLLBARS */
-        ::-webkit-scrollbar { width: 6px; } 
-        ::-webkit-scrollbar-track { background: #001100; } 
-        ::-webkit-scrollbar-thumb { background: #004400; }
+        .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.9); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-main { border: 1px solid #00ff41; padding: 10px; text-align: left; transition: all 0.2s; cursor: pointer; text-transform: uppercase; font-size: 1.1rem; }
+        .btn-main:hover:not(:disabled) { background: #00ff41; color: black; }
+        .btn-main:disabled { opacity: 0.5; cursor: not-allowed; border-color: #444; color: #444; }
         
-        /* UI COMPONENTS */
-        .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.95); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-        
-        /* BUTTONS */
-        .btn-main { border: 1px solid #00ff41; padding: 12px; text-align: center; transition: all 0.2s; cursor: pointer; text-transform: uppercase; font-size: 1.2rem; background: #001100; color: #00ff41; }
-        .btn-main:hover:not(:disabled) { background: #00ff41; color: black; transform: scale(1.02); }
-        .btn-main:disabled { opacity: 0.3; cursor: not-allowed; border-color: #444; color: #444; }
-        
-        /* TABS */
         .tab-btn { flex: 1; text-align: center; border-bottom: 2px solid #004400; color: #004400; cursor: pointer; padding: 8px; font-size: 1.1rem; }
         .tab-btn.active { border-bottom-color: #00ff41; color: #00ff41; }
         
-        /* CARDS */
-        .char-card { border: 1px solid #004400; padding: 20px; cursor: pointer; transition: all 0.2s; opacity: 0.7; }
-        .char-card:hover { border-color: #00ff41; opacity: 1; background: #002200; }
-        .char-card.selected { border-color: #00ff41; background: #003300; opacity: 1; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
+        .inv-item { font-size: 1.1rem; padding: 6px; border-bottom: 1px dashed #004400; cursor: help; }
+        .inv-item:hover { color: #ccffcc; background: #002200; }
+
+        .char-card { border: 1px solid #004400; padding: 20px; cursor: pointer; transition: all 0.3s; opacity: 0.7; }
+        .char-card:hover { border-color: #00ff41; opacity: 1; transform: scale(1.02); background: #001100; }
+        .char-card.selected { border-color: #00ff41; background: #002200; opacity: 1; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
         
-        /* OVERLAYS (Z-Index 100 to sit ABOVE scanlines) */
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.98); z-index: 100; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* FONT OVERRIDES */
-        #story-log { font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; line-height: 1.6; color: #e0e0e0; }
+        /* Story Text: Readable Prose Font */
+        #story-log { font-family: 'Georgia', serif; font-size: 1.25rem; line-height: 1.6; color: #e0e0e0; }
         
-        /* PIXEL ART */
-        .pixel-heart { display: inline-block; width: 12px; height: 12px; background: #ff0000; margin-right: 3px; box-shadow: 2px 2px 0 #660000; }
-        .pixel-heart.empty { background: #330000; box-shadow: none; }
-        .pixel-coin { display: inline-block; width: 8px; height: 12px; background: #ffee00; margin-right: 2px; border-radius: 1px; }
+        #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
+
+        /* PIXEL ART STATS */
+        .pixel-heart { display: inline-block; width: 14px; height: 14px; background: red; margin-right: 2px; box-shadow: 1px 1px 0 #500; }
+        .pixel-heart.empty { background: #300; box-shadow: none; }
+        .pixel-coin { display: inline-block; width: 8px; height: 14px; background: yellow; margin-right: 2px; border-radius: 2px; }
         
-        /* LIST ITEMS */
         .npc-item { font-size: 1rem; border: 1px solid #004400; padding: 8px; cursor: pointer; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
         .npc-item:hover { background: #002200; border-color: #00ff41; }
         .npc-icon { width: 24px; height: 24px; background: #003300; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
-        .inv-item { font-size: 1.1rem; padding: 6px; border-bottom: 1px dashed #004400; cursor: help; }
-        .inv-item:hover { color: #ccffcc; background: #002200; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col p-2 crt-flicker gap-2 select-none">
-    
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0 relative z-50">
-        <span>NEON_PROTOCOL // V.20.0</span>
-        <span id="current-loc-display" class="text-yellow-400">LOC: BOOT_SEQUENCE</span>
+        <span>NEON_PROTOCOL // V.21.0</span>
+        <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
-    <div id="screen-language" class="overlay">
-        <div class="text-center flex flex-col gap-8">
-            <h1 class="text-6xl text-[#00ff41] tracking-widest animate-pulse">SELECT LANGUAGE</h1>
-            <div class="flex flex-col gap-4 w-80 mx-auto relative z-50">
-                <button onclick="setLanguage('English')" class="btn-main">ENGLISH</button>
-                <button onclick="setLanguage('Telugu')" class="btn-main">తెలుగు</button>
-                <button onclick="setLanguage('Hindi')" class="btn-main">हिंदी</button>
+    <div id="lang-screen" class="overlay">
+        <div class="text-center flex flex-col gap-6 relative z-50">
+            <h1 class="text-5xl text-[#00ff41] tracking-widest animate-pulse">SELECT LANGUAGE</h1>
+            <div class="grid grid-cols-2 gap-4 w-80 mx-auto">
+                <button onclick="setLanguage('English')" class="btn-main text-center">ENGLISH</button>
+                <button onclick="setLanguage('Telugu')" class="btn-main text-center">తెలుగు</button>
+                <button onclick="setLanguage('Hindi')" class="btn-main text-center">हिंदी</button>
             </div>
         </div>
     </div>
 
-    <div id="screen-length" class="overlay hidden">
-        <div class="text-center flex flex-col gap-8">
-            <h1 class="text-5xl text-[#00ff41] tracking-widest">ESTIMATE DURATION</h1>
-            <div class="flex gap-4 justify-center relative z-50">
-                <button onclick="setDuration(20)" class="btn-main px-8">SHORT (20)</button>
-                <button onclick="setDuration(40)" class="btn-main px-8">MEDIUM (40)</button>
-                <button onclick="setDuration(100)" class="btn-main px-8">LONG (100)</button>
+    <div id="length-screen" class="overlay hidden">
+        <div class="text-center flex flex-col gap-6 relative z-50">
+            <h1 class="text-5xl text-[#00ff41] tracking-widest">DURATION</h1>
+            <div class="flex gap-4 justify-center">
+                <button onclick="setDuration(20)" class="btn-main px-8">SHORT</button>
+                <button onclick="setDuration(40)" class="btn-main px-8">MEDIUM</button>
+                <button onclick="setDuration(100)" class="btn-main px-8">LONG</button>
             </div>
         </div>
     </div>
 
-    <div id="screen-char" class="overlay hidden flex-col">
+    <div id="char-screen" class="overlay hidden flex-col">
         <div class="flex gap-4 border-b border-[#004400] w-full max-w-6xl mb-6 pb-2 relative z-50">
             <button class="tab-btn active text-xl" onclick="switchCharTab('standard')">STANDARD ARCHETYPES</button>
             <button class="tab-btn text-xl" onclick="switchCharTab('curated')">SPECIAL STORIES</button>
@@ -100,17 +88,17 @@
             <div class="char-card" onclick="selectArchetype('RAVEN', this)">
                 <h2 class="text-3xl font-bold mb-2">RAVEN</h2>
                 <p class="text-lg text-gray-400">Class: Detective</p>
-                <p class="text-sm mt-2">Dilemma: Justice vs. Morality. Starts in Neo-Kowloon.</p>
+                <p class="text-sm mt-2">Dilemma: Justice vs. Morality. Neo-Kowloon.</p>
             </div>
             <div class="char-card" onclick="selectArchetype('I-6', this)">
                 <h2 class="text-3xl font-bold mb-2">UNIT I-6</h2>
                 <p class="text-lg text-gray-400">Class: Rogue AI</p>
-                <p class="text-sm mt-2">Theme: Transcendental Nihilism. Starts in Scrapyard.</p>
+                <p class="text-sm mt-2">Theme: Nihilism. The Scrapyard.</p>
             </div>
             <div class="char-card" onclick="selectArchetype('CUSTOM', this)">
                 <h2 class="text-3xl font-bold mb-2">THE ANOMALY</h2>
                 <p class="text-lg text-gray-400">Class: Custom</p>
-                <p class="text-sm mt-2">Write your own origin story.</p>
+                <p class="text-sm mt-2">Unknown Origin.</p>
             </div>
         </div>
 
@@ -118,7 +106,7 @@
             <div class="char-card" onclick="selectArchetype('GARGANTUS', this)">
                 <h2 class="text-3xl font-bold mb-2 text-yellow-400">TRIP TO GARGANTUS</h2>
                 <p class="text-lg">Author: Lem-Inspired</p>
-                <p class="text-sm mt-2">Tone: Satirical, Absurdist, Philosophical. Escape the bureaucracy of the cosmos.</p>
+                <p class="text-sm mt-2">Satirical, Absurdist, Philosophical.</p>
             </div>
         </div>
         
@@ -171,7 +159,7 @@
                 <div class="w-full h-3 bg-[#330000] mt-1"><div id="enemy-bar" class="h-full bg-red-600 w-full transition-all"></div></div>
             </div>
 
-            <div id="story-log" class="flex-1 overflow-y-auto p-4 text-xl"></div>
+            <div id="story-log" class="flex-1 overflow-y-auto p-6 text-xl"></div>
 
             <div id="choices-area" class="grid grid-cols-2 gap-3 mt-2 pt-2 border-t border-[#004400]"></div>
             
@@ -217,7 +205,6 @@
     </div>
 
     <script>
-    // --- LORE DATABASE ---
     const DB_LORE = {
         "Service Revolver": "Standard issue .45 caliber. Kinetic stopping power.",
         "Arc Welder": "Modified industrial tool. 50kV short-range discharge.",
@@ -226,7 +213,6 @@
         "Combat": "Headshots (Organics) or Core (Robots) are fatal."
     };
 
-    // --- GAME STATE ---
     let state = {
         lang: 'English',
         maxTurns: 40,
@@ -247,22 +233,27 @@
     const bgm = new Audio('EastHastings.mp3');
     bgm.loop = true;
     bgm.volume = 0.5;
+    
+    // Attempt play on user interaction
+    function unlockAudio() {
+        bgm.play().then(() => {
+            // Optional: Pause immediately if you don't want it playing on menu yet
+            // bgm.pause(); 
+        }).catch(e => console.log("Audio waiting for interaction"));
+    }
 
-    // --- NAVIGATION FUNCTIONS ---
     function setLanguage(lang) {
         state.lang = lang;
-        document.getElementById('screen-language').classList.add('hidden');
-        document.getElementById('screen-length').classList.remove('hidden');
-        
-        // UNLOCK AUDIO ON FIRST INTERACTION
-        bgm.play().then(() => bgm.pause()).catch(() => {}); 
+        document.getElementById('lang-screen').classList.add('hidden');
+        document.getElementById('length-screen').classList.remove('hidden');
+        unlockAudio(); 
     }
 
     function setDuration(val) {
         state.maxTurns = val;
-        document.getElementById('screen-length').classList.add('hidden');
-        document.getElementById('screen-char').classList.remove('hidden');
-        document.getElementById('screen-char').classList.add('flex');
+        document.getElementById('length-screen').classList.add('hidden');
+        document.getElementById('char-screen').classList.remove('hidden');
+        document.getElementById('char-screen').classList.add('flex');
     }
 
     function switchCharTab(tab) {
@@ -290,8 +281,8 @@
     }
 
     function initGame() {
-        // Play Music
-        bgm.play().catch(e => console.log("Audio Error:", e));
+        // Ensure audio plays
+        if(bgm.paused) bgm.play().catch(e => console.log(e));
 
         // Setup Profile
         if (selectedArch === 'RAVEN') {
@@ -317,7 +308,7 @@
         }
 
         // Show Game UI
-        document.getElementById('screen-char').classList.add('hidden');
+        document.getElementById('char-screen').classList.add('hidden');
         document.getElementById('screen-game').classList.remove('hidden');
         document.getElementById('screen-game').classList.add('grid');
         
@@ -423,20 +414,20 @@
     // --- UI RENDERERS ---
     async function typeText(text) {
         const el = document.getElementById('story-log');
+        
+        // CLEAR PREVIOUS TEXT FOR CLEANER LOOK
+        el.innerHTML = ''; 
+
         const newEntry = document.createElement('div');
-        newEntry.className = "mb-6 border-b border-[#002200] pb-4";
         el.appendChild(newEntry);
         
-        // Bold formatting
-        let formatted = text.replace(/\*\*(.*?)\*\*/g, '<span class="text-[#00ff41] font-bold">$1</span>');
-        // Italic formatting
-        formatted = formatted.replace(/\*(.*?)\*/g, '<span class="text-gray-500 italic">$1</span>');
-        
         let h = '';
-        const tags = /<[^>]*>/g;
-        // Simple typing effect (stripping tags for safety then re-adding is hard, simplified here just instant load for HTML)
-        newEntry.innerHTML = formatted; 
-        el.scrollTop = el.scrollHeight;
+        for(let c of text) {
+            h += c;
+            newEntry.innerHTML = h + '<span class="animate-pulse">_</span>';
+            await new Promise(r=>setTimeout(r, 10)); // Slowed down slightly for effect
+        }
+        newEntry.innerHTML = h;
     }
 
     function renderStats() {
@@ -488,7 +479,7 @@
             div.className = 'inv-item';
             div.innerText = item;
             div.onmouseenter = () => {
-                const desc = DB_LORE[item] || "No database entry.";
+                const desc = DB_LORE[item] || "No data available in database.";
                 document.getElementById('item-info').innerText = desc;
             };
             list.appendChild(div);
@@ -527,7 +518,6 @@
         } catch(e) { el.innerText = "ERROR."; }
     }
 
-    // --- UTILS ---
     function switchInvTab(tab, el) {
         state.activeTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
