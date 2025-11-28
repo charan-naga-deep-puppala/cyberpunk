@@ -13,7 +13,6 @@ app.use(express.json());
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const enemyRegistry = new Map();
 
-// --- WORLD DATA ---
 const CITIES = {
     "Neo-Kowloon": "Classic Cyberpunk. Rain, neon, noodle stands.",
     "The Scrapyard": "Industrial hellscape. Burning metal, robot graveyard.",
@@ -31,14 +30,16 @@ You are the Game Master of a high-stakes Sci-Fi RPG.
 1. **LANGUAGE:** Reply in [LANGUAGE].
 2. **CONTEXT:** Player is [ARCHETYPE] named [NAME] in [CITY].
 
-### INVENTORY MECHANIC:
-- The inventory is split into: **WEAPONS**, **MEMORIES** (Clues/Flashbacks), and **ITEMS** (Tools).
-- You can add/remove items based on the story.
-- Example: "inventoryUpdates": { "add": {"category": "memories", "item": "Corrupted Data Chip"}, "remove": {"category": "items", "item": "Health Pack"} }
+### FATAL COMBAT MECHANICS (CRITICAL):
+- **INSTANT DEATH:**
+  - **Organics (Humans/Detectives):** A hit to the HEAD or THROAT slit is fatal.
+  - **Synthetics (Robots):** Removing/Destroying the POWER CORE is fatal.
+- If the **PLAYER** targets these spots and succeeds: Describe a cinematic instant kill and set Enemy HP to 0.
+- If the **ENEMY** hits the player in these spots (rare critical hit): Describe the sudden darkness and set "isGameOver": true.
 
-### COMBAT & PUZZLES:
-- If fight starts: "inCombat": true, "enemyStats": {...}.
-- If hacked: "uiLocked": true, "puzzleQuestion": "...".
+### INVENTORY:
+- Categories: WEAPONS, MEMORIES, ITEMS.
+- Update via "inventoryUpdates": { "add": [...], "remove": [...] }.
 
 JSON FORMAT:
 {
@@ -74,7 +75,6 @@ app.post('/api/turn', async (req, res) => {
     try {
         let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory } = req.body;
         
-        // Origin Story Logic
         if (history.length === 0) {
             if (playerProfile.archetype === "RAVEN") {
                 currentCity = "Neo-Kowloon";
@@ -89,29 +89,28 @@ app.post('/api/turn', async (req, res) => {
         }
 
         const cityVibe = CITIES[currentCity] || "Cyberpunk City";
-        console.log(`Action: ${userAction.substring(0,20)}...`);
-
+        
         let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n`;
         fullPrompt += `LANGUAGE: ${language || 'English'}\n`;
         fullPrompt += `PLAYER: ${playerProfile?.name} (${playerProfile?.class})\n`;
         fullPrompt += `LOC: ${currentCity} (${cityVibe})\n`;
         fullPrompt += `STATUS: HP=${currentStats.hp}\n`;
-        fullPrompt += `CURRENT INVENTORY: ${JSON.stringify(inventory)}\n`;
+        fullPrompt += `INVENTORY: ${JSON.stringify(inventory)}\n`;
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
         fullPrompt += `HISTORY:\n`;
         history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
+        // UPDATED MODEL: Using gemini-2.0-flash-exp (The latest Flash model)
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
+            model: 'gemini-2.0-flash-exp', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
 
         const gameData = JSON.parse(textResponse.text);
 
-        // Image Generation
         let finalImageUrl = "";
         const isFirstTurn = history.length === 0;
 
@@ -147,8 +146,10 @@ app.post('/api/summary', async (req, res) => {
         const { history, language } = req.body;
         let prompt = `Summarize story in ${language}. Sections: OBJECTIVE, EVENTS, THREATS.\n\nLOG:\n`;
         history.forEach(t => prompt += `${t.role}: ${t.content}\n`);
+        
+        // UPDATED MODEL: Using 2.0 Flash for summary as well
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-1.5-flash', 
+            model: 'gemini-2.0-flash-exp', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
         res.json({ summary: textResponse.text });
@@ -159,4 +160,3 @@ app.post('/api/summary', async (req, res) => {
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.listen(port, () => console.log(`Server running on port ${port}`));
-
