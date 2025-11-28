@@ -6,44 +6,31 @@
     <title>NEON PROTOCOL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
-        /* CORE STYLES */
         body { background-color: #050505; color: #00ff41; font-family: 'VT323', monospace; overflow: hidden; }
-        
-        /* CRT SCANLINES */
         .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; }
-        .crt-flicker { animation: flicker 0.15s infinite; }
         @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
+        .crt-flicker { animation: flicker 0.15s infinite; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
-        /* SCROLLBARS */
-        ::-webkit-scrollbar { width: 6px; } 
-        ::-webkit-scrollbar-track { background: #001100; } 
-        ::-webkit-scrollbar-thumb { background: #004400; }
-        
-        /* UI COMPONENTS */
         .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.95); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .btn-main { border: 1px solid #00ff41; padding: 12px; text-align: center; transition: all 0.2s; cursor: pointer; text-transform: uppercase; font-size: 1.2rem; background: #001100; color: #00ff41; }
         .btn-main:hover:not(:disabled) { background: #00ff41; color: black; transform: scale(1.02); }
         .btn-main:disabled { opacity: 0.3; cursor: not-allowed; border-color: #444; color: #444; }
         
-        /* TABS */
         .tab-btn { flex: 1; text-align: center; border-bottom: 2px solid #004400; color: #004400; cursor: pointer; padding: 8px; font-size: 1.1rem; }
         .tab-btn.active { border-bottom-color: #00ff41; color: #00ff41; }
         
-        /* CARDS */
         .char-card { border: 1px solid #004400; padding: 20px; cursor: pointer; transition: all 0.2s; opacity: 0.7; }
         .char-card:hover { border-color: #00ff41; opacity: 1; background: #002200; }
         .char-card.selected { border-color: #00ff41; background: #003300; opacity: 1; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
         
-        /* OVERLAYS */
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.98); z-index: 100; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* FONTS */
         #story-log { font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; line-height: 1.6; color: #e0e0e0; }
-        
-        /* GAME OVER */
         #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
 
         /* PIXEL ART STATS */
@@ -56,11 +43,9 @@
 
         .pixel-coin { display: inline-block; width: 8px; height: 14px; background: #ffee00; margin-right: 2px; border-radius: 2px; }
         
-        /* LIST ITEMS */
         .npc-item { font-size: 1rem; border: 1px solid #004400; padding: 8px; cursor: pointer; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
         .npc-item:hover { background: #002200; border-color: #00ff41; }
         .npc-icon { width: 24px; height: 24px; background: #003300; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
-        
         .inv-item { font-size: 1.1rem; padding: 6px; border-bottom: 1px dashed #004400; cursor: help; }
         .inv-item:hover { color: #ccffcc; background: #002200; }
 
@@ -73,7 +58,7 @@
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0 relative z-50">
-        <span>NEON_PROTOCOL // V.25.0</span>
+        <span>NEON_PROTOCOL // V.26.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -127,7 +112,7 @@
             <div class="char-card" onclick="selectArchetype('GARGANTUS', this)">
                 <h2 class="text-3xl font-bold mb-2 text-yellow-400">TRIP TO GARGANTUS</h2>
                 <p class="text-lg">Author: Lem-Inspired</p>
-                <p class="text-sm mt-2">Tone: Satirical, Absurdist, Philosophical. Escape the bureaucracy of the cosmos.</p>
+                <p class="text-sm mt-2">Satirical, Absurdist, Philosophical.</p>
             </div>
         </div>
         
@@ -181,8 +166,7 @@
                 <div class="w-full h-3 bg-[#330000] mt-1"><div id="enemy-bar" class="h-full bg-red-600 w-full transition-all"></div></div>
             </div>
 
-            <div id="story-log" class="flex-1 overflow-y-auto p-4 text-xl relative">
-                </div>
+            <div id="story-log" class="flex-1 overflow-y-auto p-4 text-xl relative"></div>
 
             <div id="loot-area" class="hidden p-2 border-t border-yellow-500 bg-[#1a1a00] z-20">
                 <div class="text-yellow-500 text-xs font-bold">SCANNER: OBJECTS DETECTED</div>
@@ -232,18 +216,7 @@
         </div>
     </div>
 
-    <div id="overlay-help" class="overlay hidden">
-        <div class="panel w-full max-w-3xl h-3/4 border-gray-400 relative z-50">
-            <div class="flex justify-between border-b border-gray-400 pb-2"><h2 class="text-xl text-gray-400">DATABASE</h2><button onclick="closeOverlay('overlay-help')" class="text-gray-400">[X]</button></div>
-            <div class="grid grid-cols-3 gap-4 h-full overflow-hidden p-2">
-                <div class="col-span-1 border-r border-[#004400] flex flex-col gap-2 overflow-y-auto" id="help-topics"></div>
-                <div class="col-span-2 p-2 overflow-y-auto text-sm" id="help-content">Select a topic.</div>
-            </div>
-        </div>
-    </div>
-
     <script>
-    // --- LORE DATABASE ---
     const DB_LORE = {
         "Service Revolver": "Standard issue .45 caliber. Kinetic stopping power.",
         "Arc Welder": "Modified industrial tool. 50kV short-range discharge.",
@@ -252,7 +225,6 @@
         "Combat": "Headshots (Organics) or Core (Robots) are fatal."
     };
 
-    // --- GAME STATE ---
     let state = {
         lang: 'English',
         maxTurns: 40,
@@ -271,7 +243,6 @@
 
     let selectedArch = null;
 
-    // --- NAVIGATION ---
     function setLanguage(lang) {
         state.lang = lang;
         document.getElementById('screen-language').classList.add('hidden');
@@ -341,7 +312,6 @@
         makeTurn("");
     }
 
-    // --- GAME LOGIC ---
     async function makeTurn(action) {
         const choicesDiv = document.getElementById('choices-area');
         choicesDiv.innerHTML = '<div class="text-[#00ff41] animate-pulse col-span-2 text-xl">UPLINKING...</div>';
@@ -367,17 +337,14 @@
             const data = await res.json();
             state.turnCount = data.turnCount;
             
-            // Sync Stats
             if (data.stats) { state.stats = data.stats; renderStats(); }
             
-            // Sync Location
             if (data.currentCity) {
                 state.currentCity = data.currentCity;
                 if(!state.unlockedCities.includes(data.currentCity)) state.unlockedCities.push(data.currentCity);
                 document.getElementById('current-loc-display').innerText = `LOC: ${state.currentCity.toUpperCase()}`;
             }
 
-            // Sync Inventory
             if (data.inventoryUpdates && data.inventoryUpdates.add) {
                 data.inventoryUpdates.add.forEach(i => {
                     if(state.inventory[i.category]) state.inventory[i.category].push(i.item);
@@ -385,7 +352,6 @@
                 renderInventory();
             }
 
-            // Sync Characters
             if (data.newCharacters) {
                 data.newCharacters.forEach(nc => {
                     if (!state.knownCharacters.some(k => k.name === nc.name)) state.knownCharacters.push(nc);
@@ -393,7 +359,6 @@
                 renderCharacters();
             }
 
-            // Available Items / Looting
             const lootArea = document.getElementById('loot-area');
             const lootList = document.getElementById('loot-list');
             if (data.availableItems && data.availableItems.length > 0) {
@@ -405,7 +370,6 @@
                     btn.innerHTML = `[PICK UP] ${item.name}`;
                     btn.title = item.description;
                     btn.onclick = () => {
-                        // Optimistic update
                         btn.remove();
                         if(lootList.children.length === 0) lootArea.classList.add('hidden');
                         makeTurn(`I take the ${item.name}.`);
@@ -416,11 +380,9 @@
                 lootArea.classList.add('hidden');
             }
 
-            // Update Log
             state.history.push({ role: 'user', content: action || "Start" });
             state.history.push({ role: 'model', content: data.narrative });
 
-            // Images & Avatar
             if (state.history.length <= 2 && data.imageUrl) {
                 const avatar = document.getElementById('avatar-display');
                 avatar.src = data.imageUrl;
@@ -430,7 +392,6 @@
 
             typeText(data.narrative);
 
-            // Combat State
             if (data.inCombat && data.enemyStats) {
                 state.enemyStats = data.enemyStats;
                 document.getElementById('enemy-hud').classList.remove('hidden');
@@ -444,12 +405,10 @@
                 document.getElementById('enemy-hud').classList.remove('flex');
             }
 
-            // Controls
             choicesDiv.innerHTML = '';
             if(data.isGameOver) {
                 document.getElementById('screen-gameover').classList.remove('hidden');
                 document.getElementById('screen-gameover').classList.add('flex');
-                // Trigger summary on death
                 document.getElementById('overlay-summary').classList.remove('hidden');
                 fetchSummary();
             } else if(data.uiLocked) {
@@ -468,13 +427,11 @@
         } catch (e) { console.error(e); choicesDiv.innerText = "CONNECTION FAILURE."; }
     }
 
-    // --- RENDERERS ---
     async function typeText(text) {
         const el = document.getElementById('story-log');
-        el.innerHTML = ''; // Clean page turn
+        el.innerHTML = '';
         const newEntry = document.createElement('div');
         el.appendChild(newEntry);
-        
         let h = '';
         for(let c of text) {
             h += c;
@@ -489,7 +446,6 @@
         hpContainer.innerHTML = '';
         const hearts = Math.ceil(state.stats.hp / 10);
         
-        // DYNAMIC ICONS
         const isRobot = (state.profile.archetype === 'I-6');
         const iconClass = isRobot ? 'core-icon' : 'heart-icon';
         const emptyClass = isRobot ? 'core-empty' : 'heart-empty';
@@ -540,9 +496,8 @@
             const div = document.createElement('div');
             div.className = 'inv-item';
             div.innerText = item;
-            div.title = "Item present in inventory";
             div.onmouseenter = () => {
-                const desc = DB_LORE[item] || "No database entry.";
+                const desc = DB_LORE[item] || "No data available in database.";
                 document.getElementById('item-info').innerText = desc;
             };
             list.appendChild(div);
@@ -581,7 +536,6 @@
         } catch(e) { el.innerText = "ERROR."; }
     }
 
-    // --- UTILS ---
     function switchInvTab(tab, el) {
         state.activeTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -598,8 +552,6 @@
         document.getElementById('puzzle-in').value = '';
         makeTurn(`Puzzle Answer: ${val}`);
     }
-    
-    // Help Button Logic (was missing in main HTML body, added via JS dynamic bind if needed, or rely on hover)
     </script>
 </body>
 </html>
