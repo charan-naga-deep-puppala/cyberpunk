@@ -2,25 +2,29 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const compression = require('compression'); // FIX: Prevents large response crashes
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
+// --- MIDDLEWARE ---
+app.use(compression()); // Compresses data (Critical for Render)
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Allows large payloads
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // --- WORLD DATA ---
 const CITIES = {
-    "Neo-Kowloon": "Rain. Neon. Concrete.",
-    "The Scrapyard": "Rust. Fire. Metal.",
-    "Solaris District": "Water. Glass. Light.",
-    "Magrathea Heights": "Gold. Sun. Air.",
-    "Trantor Deep": "Metal. Pipes. Steam.",
-    "The Zone": "Trees. Silence. Glitch.",
-    "Ubik Reality": "Decay. Fade. Retro."
+    "Neo-Kowloon": "Rain. Neon. Noodle stands. Concrete.",
+    "The Scrapyard": "Rust. Fire. Metal crushers.",
+    "Solaris District": "Water. Glass. Strange lights.",
+    "Magrathea Heights": "Gold. Fake sun. Clean air.",
+    "Trantor Deep": "Metal walls. Pipes. Steam.",
+    "The Zone": "Trees. Radiation. Silence.",
+    "Ubik Reality": "Old houses. Fading colors. Decay.",
+    "Gargantus Space": "Void. Stars. Impossible shapes."
 };
 
 // --- SYSTEM PROMPT ---
@@ -28,22 +32,18 @@ const SYSTEM_INSTRUCTION = `
 You are the Game Master of a Sci-Fi RPG.
 
 ### WRITING RULES (STRICT ORWELLIAN):
-1. **No metaphors or similes.**
+1. **No metaphors. No similes.**
 2. **Short words only.**
 3. **Active voice.**
 4. **NO SOUND EFFECTS.**
 5. **Format:** Clear paragraphs.
 
-### CHARACTER ABILITIES:
-- **RAVEN (Detective):** Has "FORENSICS" (analyze scene) and "INTIMIDATE" (force NPCs).
-- **I-6 (Robot):** Has "HACK" (open doors/computers) and "OVERCLOCK" (combat boost).
-- **CUSTOM:** Has "IMPROVISE".
-
 ### MECHANICS:
-1. **COMBAT:** Headshots/Core hits are fatal. Player death = "isGameOver": true.
-2. **LOOTING:** - If player inspects a container/shelf, list items in "availableItems".
-   - If player takes items, add to "inventoryUpdates".
-3. **LANGUAGE:** Respond ONLY in [LANGUAGE].
+1. **COMBAT:** Headshots or Core hits are fatal. Player death = "isGameOver": true.
+2. **LOOTING:** - If items are *seen* but not taken: List in "availableItems".
+   - If items are *taken*: List in "inventoryUpdates" -> "add".
+3. **CHARACTERS:** If a NEW NPC appears, add to "newCharacters".
+4. **LANGUAGE:** Respond ONLY in [LANGUAGE].
 
 JSON FORMAT:
 {
@@ -55,52 +55,47 @@ JSON FORMAT:
   "availableItems": [ { "name": "Item Name", "type": "weapons|items|memories", "description": "Short desc" } ] OR null,
   "newCharacters": [ { "name": "Name", "description": "Visual details..." } ] OR null,
   "choices": ["Opt1", "Opt2"], 
-  "abilities": ["Ability1", "Ability2"],
+  "uiLocked": boolean, 
+  "puzzleQuestion": "String or null",
   "caseSolved": boolean,
   "stats": { "hp": 100, "credits": 50 },
-  "inventoryUpdates": { "add": [], "remove": [] } OR null,
+  "inventoryUpdates": { "add": [{"item": "String", "category": "String"}], "remove": [] } OR null,
   "isGameOver": boolean
 }
 `;
 
-// --- IMAGE GENERATION (DEBUGGED) ---
-async function generateGeminiImage(prompt) {
-    console.log(">> STARTING IMAGE GEN: " + prompt.substring(0, 30) + "...");
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-image", 
-            contents: "Create a cyberpunk noir style illustration, cinematic lighting: " + prompt,
-        });
-        
-        // Log the structure to debug
-        // console.log(">> IMG RESPONSE:", JSON.stringify(response, null, 2));
-
-        if (response.candidates && response.candidates[0].content.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    console.log(">> IMAGE SUCCESS");
-                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                }
-            }
-        }
-        console.warn(">> IMAGE FAIL: No inlineData found.");
-        return null;
-    } catch (error) {
-        console.error(">> IMAGE ERROR:", error.message);
-        return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+DATA+CORRUPT";
-    }
-}
-
-// --- HELPER: SAFE JSON ---
+// --- HELPER: SAFE JSON EXTRACTION ---
 function extractJSON(response) {
     let text = "";
+    // Handle different SDK response structures
     if (typeof response.text === 'function') text = response.text();
     else if (typeof response.text === 'string') text = response.text;
     else if (response.candidates) text = response.candidates[0].content.parts[0].text;
     
+    // Clean markdown if present
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) return JSON.parse(jsonMatch[0]);
     return JSON.parse(text);
+}
+
+// --- IMAGE GENERATION (GEMINI NATIVE) ---
+async function generateGeminiImage(prompt) {
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash-image", 
+            contents: "Create a cyberpunk noir style illustration, cinematic lighting, dark, grainy: " + prompt,
+        });
+        
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error("Image Gen Error:", error.message);
+        return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+DATA+CORRUPT";
+    }
 }
 
 // --- MAIN TURN ENDPOINT ---
@@ -122,7 +117,7 @@ app.post('/api/turn', async (req, res) => {
                 userAction = "I am Unit I-6. My systems reboot. I lie on a conveyor belt moving toward a furnace. I must escape.";
             } else if (playerProfile.archetype === "GARGANTUS") {
                 currentCity = "Gargantus Space";
-                userAction = "I approach the anomaly.";
+                userAction = "I approach the anomaly. The ship sensors fail. I look out the viewport.";
             } else {
                 currentCity = "Neo-Kowloon";
                 userAction = `I am ${playerProfile.name}, a ${playerProfile.class}. ${playerProfile.backstory}`;
@@ -133,7 +128,7 @@ app.post('/api/turn', async (req, res) => {
         
         let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n`;
         fullPrompt += `LANGUAGE: ${language || 'English'}\n`;
-        fullPrompt += `CONTEXT: Turn ${turnCount}/${maxTurns}. Player: ${playerProfile.name} (${playerProfile.class}). Location: ${currentCity}.\n`;
+        fullPrompt += `CONTEXT: Turn ${turnCount}/${maxTurns}. Player: ${playerProfile.name} (${playerProfile.class}). Location: ${currentCity} (${cityVibe}).\n`;
         fullPrompt += `STATUS: HP=${currentStats.hp}. Inventory: ${JSON.stringify(inventory)}\n`;
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
@@ -177,7 +172,7 @@ app.post('/api/turn', async (req, res) => {
 
     } catch (error) {
         console.error("Server Error:", error);
-        res.status(500).json({ narrative: "System Failure. Connection Lost.", choices: ["Retry"], stats: req.body.currentStats });
+        res.status(500).json({ narrative: "System Failure. Connection Lost.", choices: ["Retry"], stats: req.body.currentStats || {hp:100, credits:0} });
     }
 });
 
@@ -193,7 +188,12 @@ app.post('/api/summary', async (req, res) => {
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
         
-        const summaryText = typeof textResponse.text === 'function' ? textResponse.text() : textResponse.text;
+        // Simple text extraction for summary
+        let summaryText = "";
+        if (typeof textResponse.text === 'function') summaryText = textResponse.text();
+        else if (typeof textResponse.text === 'string') summaryText = textResponse.text;
+        else if (textResponse.candidates) summaryText = textResponse.candidates[0].content.parts[0].text;
+
         res.json({ summary: summaryText });
     } catch (error) {
         console.error("Summary Error:", error);
@@ -201,5 +201,7 @@ app.post('/api/summary', async (req, res) => {
     }
 });
 
+// Serve Frontend
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+
 app.listen(port, () => console.log(`Server running on port ${port}`));
