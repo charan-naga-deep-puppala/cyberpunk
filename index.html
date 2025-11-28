@@ -15,15 +15,12 @@
         .crt-flicker { animation: flicker 0.15s infinite; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
-        /* UI COMPONENTS */
         .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.9); padding: 10px; display: flex; flex-direction: column; gap: 10px; }
         .btn-main { border: 1px solid #00ff41; padding: 10px; text-align: left; transition: all 0.2s; cursor: pointer; text-transform: uppercase; }
         .btn-main:hover:not(:disabled) { background: #00ff41; color: black; }
-        .btn-main:disabled { opacity: 0.5; cursor: not-allowed; border-color: #444; color: #444; }
         
         .tab-btn { flex: 1; text-align: center; border-bottom: 2px solid #004400; color: #004400; cursor: pointer; padding: 5px; }
         .tab-btn.active { border-bottom-color: #00ff41; color: #00ff41; }
-
         .inv-item { font-size: 0.9rem; padding: 4px; border-bottom: 1px dashed #004400; cursor: help; }
         .inv-item:hover { color: #ccffcc; }
 
@@ -31,32 +28,30 @@
         .char-card:hover { border-color: #00ff41; opacity: 1; transform: scale(1.02); background: #001100; }
         .char-card.selected { border-color: #00ff41; background: #002200; opacity: 1; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
         
-        /* OVERLAYS */
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 60; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* SLIDER STYLE */
-        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; background: #00ff41; cursor: pointer; margin-top: -6px; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #004400; }
+        /* Story Text Styling - Cleaner Font */
+        #story-log { font-family: 'Courier New', Courier, monospace; font-size: 1rem; line-height: 1.4; color: #c0c0c0; }
+        
+        /* Game Over Screen */
+        #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col p-2 crt-flicker gap-2">
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0">
-        <span>NEON_PROTOCOL // V.13.0</span>
+        <span>NEON_PROTOCOL // V.14.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
     <div id="lang-screen" class="overlay">
         <div class="text-center flex flex-col gap-4">
-            <h1 class="text-4xl text-[#00ff41] tracking-widest animate-pulse">SELECT LANGUAGE / 语言 / 言語</h1>
+            <h1 class="text-4xl text-[#00ff41] tracking-widest animate-pulse">SELECT LANGUAGE</h1>
             <div class="grid grid-cols-2 gap-4 w-64 mx-auto">
                 <button onclick="selectLang('English')" class="btn-main text-center">ENGLISH</button>
                 <button onclick="selectLang('Spanish')" class="btn-main text-center">ESPAÑOL</button>
-                <button onclick="selectLang('Japanese')" class="btn-main text-center">日本語</button>
-                <button onclick="selectLang('Hindi')" class="btn-main text-center">हिंदी</button>
             </div>
         </div>
     </div>
@@ -67,15 +62,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 <div class="char-card" onclick="selectChar('RAVEN', this)">
                     <h2 class="text-2xl font-bold">RAVEN</h2>
-                    <p class="text-sm text-gray-400">Detective. Start: Neo-Kowloon. Weakness: Human.</p>
+                    <p class="text-sm text-gray-400">Detective. Justice or Death.</p>
                 </div>
                 <div class="char-card" onclick="selectChar('I-6', this)">
                     <h2 class="text-2xl font-bold">UNIT I-6</h2>
-                    <p class="text-sm text-gray-400">Rogue AI. Start: Scrapyard. Weakness: Power Core.</p>
+                    <p class="text-sm text-gray-400">Rogue AI. Existential Dread.</p>
                 </div>
                 <div class="char-card" onclick="selectChar('CUSTOM', this)">
                     <h2 class="text-2xl font-bold">THE ANOMALY</h2>
-                    <p class="text-sm text-gray-400">Custom Origin.</p>
+                    <p class="text-sm text-gray-400">Unknown Origin.</p>
                 </div>
             </div>
             
@@ -87,22 +82,24 @@
         </div>
     </div>
 
+    <div id="game-over-screen" class="overlay hidden flex-col gap-6">
+        <h1 class="text-6xl text-red-500 font-bold tracking-widest animate-pulse">TERMINATED</h1>
+        <p class="text-red-300 text-xl font-mono">SIGNAL LOST. SUBJECT DECEASED.</p>
+        <button onclick="location.reload()" class="btn-main text-red-500 border-red-500 text-2xl px-10">REBOOT SYSTEM</button>
+    </div>
+
     <div id="game-ui" class="hidden flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 overflow-hidden relative z-10">
         
         <div class="panel md:col-span-3">
             <div class="text-center border-b border-[#004400] pb-2 text-[#00ff41] font-bold">STATUS</div>
             <div class="flex justify-between"><span>HP</span><span id="hp-val" class="text-red-500">100</span></div>
             <div class="flex justify-between"><span>CRED</span><span id="cred-val" class="text-yellow-400">50</span></div>
+            <div class="flex justify-between text-xs text-gray-500 mt-2"><span>TURN</span><span id="turn-val">0</span></div>
             
-            <div class="mt-4 border-t border-[#004400] pt-2">
-                <div class="text-xs mb-1">AUDIO GAIN</div>
-                <input type="range" id="vol-control" min="0" max="1" step="0.1" value="0.5">
-            </div>
-
             <div class="mt-auto flex flex-col gap-2">
                 <button id="btn-map" class="btn-main text-center text-yellow-500 border-yellow-500">TRANSIT MAP</button>
                 <button id="btn-case" class="btn-main text-center text-cyan-500 border-cyan-500">CASE FILE</button>
-                <button id="btn-help" class="btn-main text-center text-gray-400 border-gray-400">DATABASE</button>
+                <button id="btn-suicide" class="btn-main text-center text-red-600 border-red-600 font-bold mt-4">RESET / END</button>
             </div>
         </div>
 
@@ -118,7 +115,7 @@
                 <div class="w-full h-1 bg-[#330000] mt-1"><div id="enemy-bar" class="h-full bg-red-600 w-full transition-all"></div></div>
             </div>
 
-            <div id="story-log" class="flex-1 overflow-y-auto text-lg leading-relaxed whitespace-pre-line p-2 text-gray-300 font-sans"></div>
+            <div id="story-log" class="flex-1 overflow-y-auto p-2"></div>
 
             <div id="choices-area" class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#004400]"></div>
             
@@ -149,17 +146,7 @@
     <div id="summary-overlay" class="overlay hidden">
         <div class="panel w-full max-w-3xl h-3/4 border-cyan-500">
             <div class="flex justify-between border-b border-cyan-500 pb-2"><h2 class="text-xl text-cyan-500">CASE FILE</h2><button onclick="closeOverlay('summary-overlay')" class="text-cyan-500">[X]</button></div>
-            <div id="summary-text" class="whitespace-pre-wrap text-cyan-400 p-4 overflow-y-auto">LOADING...</div>
-        </div>
-    </div>
-
-    <div id="help-overlay" class="overlay hidden">
-        <div class="panel w-full max-w-3xl h-3/4 border-gray-400">
-            <div class="flex justify-between border-b border-gray-400 pb-2"><h2 class="text-xl text-gray-400">DATABASE</h2><button onclick="closeOverlay('help-overlay')" class="text-gray-400">[X]</button></div>
-            <div class="grid grid-cols-3 gap-4 h-full overflow-hidden p-2">
-                <div class="col-span-1 border-r border-[#004400] flex flex-col gap-2 overflow-y-auto" id="help-topics"></div>
-                <div class="col-span-2 p-2 overflow-y-auto text-sm" id="help-content">Select a topic.</div>
-            </div>
+            <div id="summary-text" class="whitespace-pre-wrap text-cyan-400 p-4 overflow-y-auto font-mono text-sm">LOADING...</div>
         </div>
     </div>
 
@@ -168,7 +155,7 @@
         "Service Revolver": "Standard issue .45 caliber.",
         "Arc Welder": "Modified industrial tool. 50kV.",
         "Neo-Kowloon": "Oldest sector. Dense, rainy.",
-        "Combat": "Attacking Vital Points (Head/Core) can cause Instant Death."
+        "Combat": "Headshots (Organics) or Core (Robots) are fatal."
     };
 
     let state = {
@@ -180,20 +167,17 @@
         unlockedCities: [],
         enemyStats: null,
         activeTab: 'weapons',
-        profile: {}
+        profile: {},
+        turnCount: 0
     };
 
     let selectedArch = null;
     
-    // --- MUSIC ENGINE ---
-    // Will look for easthastings.flac in the same folder
+    // Music Engine with Error Handling
     const bgm = new Audio('easthastings.flac');
     bgm.loop = true;
     bgm.volume = 0.5;
-    
-    bgm.onerror = () => {
-        console.warn(">> AUDIO ERROR: 'easthastings.flac' not found or format not supported.");
-    };
+    bgm.onerror = () => console.log(">> MUSIC FILE MISSING: 'easthastings.flac' not found. Game continues silently.");
 
     function selectLang(l) {
         state.lang = l;
@@ -213,21 +197,20 @@
     class Game {
         constructor() {
             this.initListeners();
-            this.populateHelp();
         }
 
         initListeners() {
             document.getElementById('start-game-btn').onclick = () => {
-                // Attempt to play music on user interaction
-                bgm.play().catch(e => console.log("Audio Autoplay Blocked", e));
+                bgm.play().catch(e => console.log("Audio requires interaction first."));
                 this.startGame();
             };
             
-            // Volume Slider
-            document.getElementById('vol-control').addEventListener('input', (e) => {
-                bgm.volume = parseFloat(e.target.value);
-            });
-
+            document.getElementById('btn-suicide').onclick = () => {
+                if(confirm("TERMINATE SESSION? THIS CANNOT BE UNDONE.")) {
+                    this.turn("I choose to end it all. I pull the plug.");
+                }
+            };
+            
             document.getElementById('btn-map').onclick = () => {
                 if(state.enemyStats) return; 
                 document.getElementById('map-overlay').classList.remove('hidden');
@@ -236,9 +219,6 @@
             document.getElementById('btn-case').onclick = () => {
                 document.getElementById('summary-overlay').classList.remove('hidden');
                 this.fetchSummary();
-            };
-            document.getElementById('btn-help').onclick = () => {
-                document.getElementById('help-overlay').classList.remove('hidden');
             };
             document.getElementById('puzzle-btn').onclick = () => {
                 const val = document.getElementById('puzzle-in').value;
@@ -290,11 +270,14 @@
                         currentCity: state.currentCity,
                         enemyStats: state.enemyStats,
                         language: state.lang,
-                        inventory: state.inventory
+                        inventory: state.inventory,
+                        turnCount: state.turnCount
                     })
                 });
 
                 const data = await res.json();
+                state.turnCount = data.turnCount;
+                document.getElementById('turn-val').innerText = state.turnCount;
                 
                 if (data.stats) {
                     state.stats = data.stats;
@@ -339,7 +322,8 @@
 
                 choicesDiv.innerHTML = '';
                 if(data.isGameOver) {
-                    choicesDiv.innerHTML = `<button onclick="location.reload()" class="btn-main text-red-500 border-red-500 col-span-2">FLATLINED // REBOOT</button>`;
+                    document.getElementById('game-over-screen').classList.remove('hidden');
+                    document.getElementById('game-over-screen').classList.add('flex');
                 } else if(data.uiLocked) {
                     document.getElementById('puzzle-area').classList.remove('hidden');
                     document.getElementById('puzzle-in').placeholder = data.puzzleQuestion || "SOLVE...";
@@ -362,14 +346,18 @@
 
         async typeText(text) {
             const el = document.getElementById('story-log');
-            el.innerHTML = '';
+            // Don't clear history, append to it for a running log feel
+            const newEntry = document.createElement('div');
+            newEntry.className = "mb-4 border-b border-[#002200] pb-2";
+            el.appendChild(newEntry);
+            
             let h = '';
             for(let c of text) {
                 h += c;
-                el.innerHTML = h + '<span class="animate-pulse">_</span>';
+                newEntry.innerHTML = h + '<span class="animate-pulse">_</span>';
                 await new Promise(r=>setTimeout(r, 2));
             }
-            el.innerHTML = h;
+            newEntry.innerHTML = h; // remove cursor
             el.scrollTop = el.scrollHeight;
         }
 
@@ -377,15 +365,13 @@
             const list = document.getElementById('inv-list');
             list.innerHTML = '';
             const items = state.inventory[state.activeTab] || [];
-            
             if(items.length === 0) list.innerHTML = '<div class="text-gray-500 italic p-2">Empty...</div>';
-
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'inv-item';
                 div.innerText = item;
                 div.onmouseenter = () => {
-                    const desc = DB_LORE[item] || "No data available in database.";
+                    const desc = DB_LORE[item] || "No data available.";
                     document.getElementById('item-info').innerText = desc;
                 };
                 list.appendChild(div);
@@ -403,6 +389,7 @@
                 const isCurrent = state.currentCity === city;
                 div.className = `p-2 border mb-2 flex justify-between ${isCurrent ? 'bg-[#00ff41] text-black border-[#00ff41]' : (isUnlocked ? 'border-[#00ff41] hover:bg-[#002200] cursor-pointer' : 'border-[#330000] text-gray-600 opacity-50 cursor-not-allowed')}`;
                 div.innerHTML = `<span>${city.toUpperCase()}</span><span>${isCurrent ? 'CURRENT' : (isUnlocked ? 'GO >>' : 'LOCKED')}</span>`;
+                
                 if(isUnlocked && !isCurrent) {
                     div.onclick = () => {
                         closeOverlay('map-overlay');
@@ -425,19 +412,6 @@
                 const data = await res.json();
                 el.innerText = data.summary;
             } catch(e) { el.innerText = "ERROR."; }
-        }
-
-        populateHelp() {
-            const topics = Object.keys(DB_LORE);
-            const list = document.getElementById('help-topics');
-            list.innerHTML = '';
-            topics.forEach(t => {
-                const d = document.createElement('div');
-                d.className = "p-1 cursor-pointer hover:bg-[#00ff41] hover:text-black text-xs";
-                d.innerText = t;
-                d.onclick = () => document.getElementById('help-content').innerText = DB_LORE[t];
-                list.appendChild(d);
-            });
         }
     }
 
