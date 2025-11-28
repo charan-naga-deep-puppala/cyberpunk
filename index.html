@@ -58,7 +58,7 @@
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0 relative z-50">
-        <span>NEON_PROTOCOL // V.34.0</span>
+        <span>NEON_PROTOCOL // V.35.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -66,9 +66,9 @@
         <div class="text-center flex flex-col gap-8">
             <h1 class="text-6xl text-[#00ff41] tracking-widest animate-pulse">SELECT LANGUAGE</h1>
             <div class="flex flex-col gap-4 w-80 mx-auto relative z-50">
-                <button onclick="setLanguage('English')" class="btn-main">ENGLISH</button>
-                <button onclick="setLanguage('Telugu')" class="btn-main">తెలుగు</button>
-                <button onclick="setLanguage('Hindi')" class="btn-main">हिंदी</button>
+                <button onclick="setLanguage('English')" class="btn-main interactive">ENGLISH</button>
+                <button onclick="setLanguage('Telugu')" class="btn-main interactive">తెలుగు</button>
+                <button onclick="setLanguage('Hindi')" class="btn-main interactive">हिंदी</button>
             </div>
         </div>
     </div>
@@ -77,36 +77,36 @@
         <div class="text-center flex flex-col gap-8">
             <h1 class="text-5xl text-[#00ff41] tracking-widest">DURATION</h1>
             <div class="flex gap-4 justify-center relative z-50">
-                <button onclick="setDuration(20)" class="btn-main px-8">SHORT (20)</button>
-                <button onclick="setDuration(40)" class="btn-main px-8">MEDIUM (40)</button>
-                <button onclick="setDuration(100)" class="btn-main px-8">LONG (100)</button>
+                <button onclick="setDuration(20)" class="btn-main px-8 interactive">SHORT (20)</button>
+                <button onclick="setDuration(40)" class="btn-main px-8 interactive">MEDIUM (40)</button>
+                <button onclick="setDuration(100)" class="btn-main px-8 interactive">LONG (100)</button>
             </div>
         </div>
     </div>
 
     <div id="screen-char" class="overlay hidden flex-col">
         <div class="flex gap-4 border-b border-[#004400] w-full max-w-6xl mb-6 pb-2 relative z-50">
-            <button class="tab-btn active text-xl" onclick="switchCharTab('standard')">STANDARD ARCHETYPES</button>
-            <button class="tab-btn text-xl" onclick="switchCharTab('curated')">SPECIAL STORIES</button>
+            <button class="tab-btn active interactive" onclick="switchCharTab('standard', this)">STANDARD ARCHETYPES</button>
+            <button class="tab-btn interactive" onclick="switchCharTab('curated', this)">SPECIAL STORIES</button>
         </div>
 
         <div id="list-standard" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl relative z-50">
-            <div class="char-card" onclick="selectArchetype('RAVEN', this)">
+            <div class="char-card interactive" onclick="selectArchetype('RAVEN', this)">
                 <h2 class="text-3xl font-bold mb-2">RAVEN</h2>
                 <p class="text-lg text-gray-400">Detective. Justice or Death.</p>
             </div>
-            <div class="char-card" onclick="selectArchetype('I-6', this)">
+            <div class="char-card interactive" onclick="selectArchetype('I-6', this)">
                 <h2 class="text-3xl font-bold mb-2">UNIT I-6</h2>
                 <p class="text-lg text-gray-400">Rogue AI. Existential Dread.</p>
             </div>
-            <div class="char-card" onclick="selectArchetype('CUSTOM', this)">
+            <div class="char-card interactive" onclick="selectArchetype('CUSTOM', this)">
                 <h2 class="text-3xl font-bold mb-2">THE ANOMALY</h2>
-                <p class="text-lg text-gray-400">Unknown Origin.</p>
+                <p class="text-lg text-gray-400">Custom Origin.</p>
             </div>
         </div>
 
         <div id="list-curated" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl relative z-50">
-            <div class="char-card" onclick="selectArchetype('GARGANTUS', this)">
+            <div class="char-card interactive" onclick="selectArchetype('GARGANTUS', this)">
                 <h2 class="text-3xl font-bold mb-2 text-yellow-400">TRIP TO GARGANTUS</h2>
                 <p class="text-lg">Author: Lem-Inspired</p>
             </div>
@@ -117,7 +117,7 @@
             <input id="inp-desc" class="bg-[#001100] border border-[#00ff41] p-3 text-[#00ff41] text-lg outline-none" placeholder="ORIGIN STORY">
         </div>
 
-        <button id="btn-start" onclick="initGame()" class="btn-main w-64 text-center font-bold text-2xl mt-10 relative z-50" disabled>JACK IN</button>
+        <button id="btn-start" onclick="initGame()" class="btn-main w-64 text-center font-bold text-2xl mt-10 relative z-50 interactive" disabled>JACK IN</button>
     </div>
 
     <div id="screen-game" class="hidden flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 overflow-hidden relative z-10">
@@ -139,9 +139,9 @@
                 <div id="char-list" class="flex-1 overflow-y-auto pr-1"></div>
             </div>
             <div class="mt-auto flex flex-col gap-3 pt-2 border-t border-[#004400]">
-                <button onclick="toggleMap()" class="btn-main text-center text-yellow-500 border-yellow-500 text-sm py-2">TRANSIT MAP</button>
-                <button onclick="toggleCaseFile()" class="btn-main text-center text-cyan-500 border-cyan-500 text-sm py-2">CASE FILE</button>
-                <button onclick="triggerReset()" class="btn-main text-center text-red-600 border-red-600 font-bold text-sm py-2">RESET</button>
+                <button onclick="toggleMap()" class="btn-main text-center text-yellow-500 border-yellow-500 text-sm py-2 interactive">TRANSIT MAP</button>
+                <button onclick="toggleCaseFile()" class="btn-main text-center text-cyan-500 border-cyan-500 text-sm py-2 interactive">CASE FILE</button>
+                <button onclick="triggerReset()" class="btn-main text-center text-red-600 border-red-600 font-bold text-sm py-2 interactive">RESET</button>
             </div>
         </div>
 
@@ -239,10 +239,29 @@
     };
 
     let selectedArch = null;
+    let clickSynth, hoverSynth;
     let bgm = new Audio('EastHastings.mp3');
     bgm.loop = true;
     bgm.volume = 0.5;
     bgm.onerror = () => console.log(">> AUDIO MISSING");
+
+    function setupAudio() {
+        // Initialize Synths here to avoid Autoplay Policy Error
+        clickSynth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "square" },
+            envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
+        }).toDestination();
+        clickSynth.volume.value = -10;
+
+        hoverSynth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.1 }
+        }).toDestination();
+        hoverSynth.volume.value = -20;
+    }
+
+    function playClick() { if(clickSynth) clickSynth.triggerAttackRelease("C6", "32n"); }
+    function playHover() { if(hoverSynth) hoverSynth.triggerAttackRelease("E7", "32n"); }
 
     function setLanguage(lang) {
         state.lang = lang;
@@ -281,7 +300,10 @@
         document.getElementById('btn-start').disabled = false;
     }
 
-    function initGame() {
+    async function initGame() {
+        // 1. Start Tone.js Context (Resolves AudioContext Prevented Error)
+        await Tone.start();
+        setupAudio(); // Create Synths now
         bgm.play().catch(e => console.log("Audio Error:", e));
 
         if (selectedArch === 'RAVEN') {
@@ -344,10 +366,9 @@
                 document.getElementById('current-loc-display').innerText = `LOC: ${state.currentCity.toUpperCase()}`;
             }
 
-            // INVENTORY LOGIC FIXED (UNDEFINED FIX)
             if (data.inventoryUpdates && data.inventoryUpdates.add) {
                 data.inventoryUpdates.add.forEach(i => {
-                    const itemName = i.item || i.name || i; // Handle raw strings or objects
+                    const itemName = i.item || i.name || i; 
                     let cat = i.category || 'items';
                     if (!cat.endsWith('s')) cat += 's';
                     if(!state.inventory[cat]) cat = 'items'; 
@@ -370,7 +391,7 @@
                 lootList.innerHTML = '';
                 data.availableItems.forEach(item => {
                     const btn = document.createElement('div');
-                    btn.className = 'loot-item';
+                    btn.className = 'loot-item interactive';
                     btn.innerHTML = `[PICK UP] ${item.name}`;
                     btn.onclick = () => {
                         btn.remove();
@@ -425,12 +446,13 @@
                 document.getElementById('puzzle-area').classList.add('hidden');
                 data.choices.forEach(c => {
                     const btn = document.createElement('button');
-                    btn.className = state.enemyStats ? "btn-main border-red-500 text-red-500" : "btn-main";
+                    btn.className = state.enemyStats ? "btn-main interactive border-red-500 text-red-500" : "btn-main interactive";
                     btn.innerText = `> ${c}`;
                     btn.onclick = () => makeTurn(c);
                     choicesDiv.appendChild(btn);
                 });
             }
+            attachSoundListeners(); // Reattach sounds to new buttons
         } catch (e) { console.error(e); choicesDiv.innerText = "CONNECTION FAILURE."; }
     }
 
@@ -478,7 +500,7 @@
         if(state.profile.abilities) {
             state.profile.abilities.forEach(ab => {
                 const btn = document.createElement('div');
-                btn.className = "ability-btn";
+                btn.className = "ability-btn interactive";
                 btn.innerText = ab;
                 btn.onclick = () => makeTurn(`I use ability: ${ab}`);
                 list.appendChild(btn);
@@ -492,7 +514,7 @@
         if (state.knownCharacters.length === 0) { list.innerHTML = '<div class="text-gray-600 italic text-sm">No records.</div>'; return; }
         state.knownCharacters.forEach(char => {
             const el = document.createElement('div');
-            el.className = "npc-item";
+            el.className = "npc-item interactive";
             el.innerHTML = `<div class="npc-icon">${char.name[0]}</div><span>${char.name}</span>`;
             el.onclick = () => {
                 document.getElementById('dossier-name').innerText = char.name;
@@ -501,6 +523,7 @@
             };
             list.appendChild(el);
         });
+        attachSoundListeners();
     }
 
     function renderInventory() {
@@ -510,7 +533,7 @@
         if(items.length === 0) list.innerHTML = '<div class="text-gray-500 italic p-2 text-lg">Empty...</div>';
         items.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'inv-item';
+            div.className = 'inv-item interactive';
             div.innerText = item;
             div.onmouseenter = () => {
                 const desc = DB_LORE[item] || "No data available in database.";
@@ -518,6 +541,7 @@
             };
             list.appendChild(div);
         });
+        attachSoundListeners();
     }
 
     function renderMap() {
@@ -528,13 +552,14 @@
             const div = document.createElement('div');
             const isUnlocked = state.unlockedCities.includes(city);
             const isCurrent = state.currentCity === city;
-            div.className = `p-3 border mb-3 flex justify-between ${isCurrent ? 'bg-[#00ff41] text-black border-[#00ff41]' : (isUnlocked ? 'border-[#00ff41] hover:bg-[#002200] cursor-pointer' : 'border-[#330000] text-gray-600 opacity-50 cursor-not-allowed')}`;
+            div.className = `p-3 border mb-3 flex justify-between ${isCurrent ? 'bg-[#00ff41] text-black border-[#00ff41]' : (isUnlocked ? 'border-[#00ff41] hover:bg-[#002200] cursor-pointer interactive' : 'border-[#330000] text-gray-600 opacity-50 cursor-not-allowed')}`;
             div.innerHTML = `<span>${city.toUpperCase()}</span><span>${isCurrent ? 'CURRENT' : (isUnlocked ? 'GO >>' : 'LOCKED')}</span>`;
             if(isUnlocked && !isCurrent) {
                 div.onclick = () => { closeOverlay('overlay-map'); makeTurn(`Travel to ${city}.`); };
             }
             list.appendChild(div);
         });
+        attachSoundListeners();
     }
 
     async function fetchSummary() {
@@ -567,6 +592,17 @@
         document.getElementById('puzzle-in').value = '';
         makeTurn(`Puzzle Answer: ${val}`);
     }
+
+    function attachSoundListeners() {
+        const elements = document.querySelectorAll('.interactive');
+        elements.forEach(el => {
+            el.onmouseenter = playHover;
+            el.onmousedown = playClick;
+        });
+    }
+    
+    // Initial Bind
+    attachSoundListeners();
     </script>
 </body>
 </html>
