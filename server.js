@@ -104,7 +104,7 @@ app.post('/api/turn', async (req, res) => {
 
         // UPDATED MODEL: Using gemini-2.0-flash-exp (The latest Flash model)
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp', 
+            model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
@@ -160,3 +160,4 @@ app.post('/api/summary', async (req, res) => {
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.listen(port, () => console.log(`Server running on port ${port}`));
+
