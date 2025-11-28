@@ -18,6 +18,12 @@
         .choice-btn:hover:not(:disabled) { background-color: #00ff41; color: #000; cursor: pointer; }
         .choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .hud-box { border: 1px solid #004400; background: #001100; padding: 0 8px; }
+
+        /* MAP STYLES */
+        .city-node { width: 20px; height: 20px; border: 2px solid #004400; background: #000; border-radius: 50%; position: absolute; cursor: pointer; transition: all 0.3s; }
+        .city-node.unlocked { border-color: #00ff41; background: #002200; box-shadow: 0 0 10px #00ff41; }
+        .city-node:hover.unlocked { transform: scale(1.5); background: #00ff41; }
+        .city-node.active { background: #fff; border-color: #fff; box-shadow: 0 0 15px #fff; }
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center crt-flicker">
@@ -26,50 +32,50 @@
         <div class="scanlines"></div>
         
         <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80">
-            <span>NEON_PROTOCOL // V.5.0 // CHAR_GEN</span>
-            <span id="status-indicator">CONNECTED</span>
+            <span>NEON_PROTOCOL // V.7.0</span>
+            <span id="current-loc-display" class="text-yellow-400">LOC: NEO-KOWLOON</span>
         </div>
 
-        <div id="char-creation-screen" class="flex-1 flex flex-col items-center justify-center gap-6 z-20 bg-black/90 absolute inset-0 m-4">
-            <h1 class="text-4xl text-[#00ff41] text-center tracking-widest animate-pulse">IDENTITY SPOOFING</h1>
-            
-            <div class="w-full max-w-md flex flex-col gap-4">
-                <div>
-                    <label class="block text-sm opacity-70 mb-1">HANDLE (NAME)</label>
-                    <input type="text" id="char-name" class="w-full bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none focus:bg-[#002200]" placeholder="e.g. Case, Molly, V">
-                </div>
-
-                <div>
-                    <label class="block text-sm opacity-70 mb-1">CLASS (ROLE)</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button class="class-btn border border-[#004400] p-2 hover:bg-[#00ff41] hover:text-black text-sm transition" data-val="Netrunner">NETRUNNER</button>
-                        <button class="class-btn border border-[#004400] p-2 hover:bg-[#00ff41] hover:text-black text-sm transition" data-val="Street Samurai">SAMURAI</button>
-                        <button class="class-btn border border-[#004400] p-2 hover:bg-[#00ff41] hover:text-black text-sm transition" data-val="Fixer">FIXER</button>
-                    </div>
-                    <input type="hidden" id="char-class" value="Netrunner">
-                </div>
-
-                <div>
-                    <label class="block text-sm opacity-70 mb-1">VISUAL STYLE</label>
-                    <input type="text" id="char-style" class="w-full bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none focus:bg-[#002200]" placeholder="e.g. Chrome arm, trenchcoat, neon hair">
-                </div>
-
-                <button id="jack-in-btn" class="mt-4 border border-[#00ff41] p-3 hover:bg-[#00ff41] hover:text-black font-bold tracking-widest uppercase transition-all">
-                    ESTABLISH LINK
-                </button>
-            </div>
+        <div id="char-creation-screen" class="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center gap-6 p-10 m-2">
+            <h1 class="text-4xl text-[#00ff41] text-center tracking-widest animate-pulse">IDENTITY INITIALIZATION</h1>
+            <input type="text" id="char-name" class="w-full max-w-md bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none" placeholder="HANDLE (NAME)">
+            <input type="text" id="char-class" class="w-full max-w-md bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none" placeholder="CLASS (e.g. Solo, Netrunner)">
+            <input type="text" id="char-style" class="w-full max-w-md bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none" placeholder="STYLE (e.g. Chrome arm)">
+            <button id="jack-in-btn" class="border border-[#00ff41] p-3 hover:bg-[#00ff41] hover:text-black uppercase tracking-widest w-full max-w-md">JACK IN</button>
         </div>
 
         <div id="game-ui" class="hidden flex-1 flex flex-col gap-4 h-full relative z-10">
-            <div class="flex flex-row justify-between text-lg gap-2">
-                <div class="hud-box flex-1 flex justify-between"><span>VITALS:</span><span id="hp-display" class="text-red-500">100%</span></div>
-                <div class="hud-box flex-1 flex justify-between"><span>CREDS:</span><span id="credits-display" class="text-yellow-400">50</span></div>
-                <div class="hud-box flex-[2] overflow-hidden whitespace-nowrap text-ellipsis"><span class="opacity-70">INV: </span><span id="inv-display">ID Card</span></div>
+            <div class="flex flex-row gap-2 text-lg">
+                <div class="hud-box flex-1">HP: <span id="hp-display" class="text-red-500">100</span></div>
+                <div class="hud-box flex-1">CRED: <span id="credits-display" class="text-yellow-400">50</span></div>
+                <button id="map-toggle-btn" class="hud-box flex-1 text-center hover:bg-[#00ff41] hover:text-black cursor-pointer border-yellow-500 text-yellow-500">OPEN MAP</button>
             </div>
 
             <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative">
+                <div id="map-screen" class="hidden absolute inset-0 bg-black/95 z-40 border border-[#00ff41] flex items-center justify-center">
+                    <div class="relative w-[80%] h-[80%] border border-[#004400] bg-[#001100]">
+                        <h2 class="absolute top-2 left-2 text-[#00ff41]">SECTOR MAP</h2>
+                        <button id="close-map-btn" class="absolute top-2 right-2 border border-red-500 text-red-500 px-2 hover:bg-red-500 hover:text-black">X</button>
+                        
+                        <div class="city-node unlocked active" style="top: 80%; left: 10%;" data-city="Neo-Kowloon" title="Neo-Kowloon"></div>
+                        <div class="city-node" style="top: 60%; left: 30%;" data-city="The Zone" title="The Zone"></div>
+                        <div class="city-node" style="top: 40%; left: 50%;" data-city="Solaris District" title="Solaris District"></div>
+                        <div class="city-node" style="top: 20%; left: 70%;" data-city="Trantor Deep" title="Trantor Deep"></div>
+                        <div class="city-node" style="top: 70%; left: 80%;" data-city="Ubik Reality" title="Ubik Reality"></div>
+                        <div class="city-node" style="top: 10%; left: 40%;" data-city="Magrathea Heights" title="Magrathea Heights"></div>
+
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-30">
+                            <line x1="10%" y1="80%" x2="30%" y2="60%" stroke="#00ff41" stroke-width="2" />
+                            <line x1="30%" y1="60%" x2="50%" y2="40%" stroke="#00ff41" stroke-width="2" />
+                            <line x1="50%" y1="40%" x2="70%" y2="20%" stroke="#00ff41" stroke-width="2" />
+                            <line x1="70%" y1="20%" x2="40%" y2="10%" stroke="#00ff41" stroke-width="2" />
+                            <line x1="30%" y1="60%" x2="80%" y2="70%" stroke="#00ff41" stroke-width="2" />
+                        </svg>
+                    </div>
+                </div>
+
                 <div class="w-full md:w-1/2 flex flex-col gap-2">
-                    <div id="image-container" class="flex-1 border border-[#004400] bg-[#001100] relative overflow-hidden flex items-center justify-center">
+                    <div id="image-container" class="flex-1 border border-[#004400] bg-[#001100] flex items-center justify-center overflow-hidden">
                         <span class="opacity-50">INITIALIZING...</span>
                     </div>
                 </div>
@@ -80,14 +86,10 @@
 
             <div id="interaction-area" class="border-t border-[#00ff41] pt-4 min-h-[120px]">
                 <div id="choice-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                
-                <div id="puzzle-container" class="hidden flex flex-col gap-2">
-                    <div class="text-red-500 animate-pulse">>> WARNING: NEURAL INTERFACE LOCKED <<</div>
-                    <div id="puzzle-question" class="text-[#00ff41] opacity-80 mb-2"></div>
-                    <div class="flex gap-2">
-                        <input type="text" id="puzzle-input" class="flex-1 bg-[#001100] border border-[#00ff41] text-[#00ff41] p-2 focus:outline-none" placeholder="TYPE SOLUTION..." autocomplete="off">
-                        <button id="submit-puzzle-btn" class="choice-btn border border-[#00ff41] p-2 text-[#00ff41]">TRANSMIT</button>
-                    </div>
+                <div id="puzzle-container" class="hidden flex gap-2">
+                    <div class="text-red-500 animate-pulse">LOCKED >></div>
+                    <input id="puzzle-input" class="flex-1 bg-[#001100] border border-[#00ff41] text-[#00ff41] p-2 focus:outline-none" placeholder="SOLVE...">
+                    <button id="submit-puzzle-btn" class="border border-[#00ff41] p-2 text-[#00ff41]">SEND</button>
                 </div>
             </div>
         </div>
@@ -96,185 +98,158 @@
     <script>
     class CyberpunkRPG {
         constructor() {
-            // UI Elements
-            this.screens = {
-                creation: document.getElementById('char-creation-screen'),
-                game: document.getElementById('game-ui')
-            };
-            
-            this.storyContainer = document.getElementById('story-text');
-            this.choiceContainer = document.getElementById('choice-container');
-            this.imageContainer = document.getElementById('image-container');
-            this.statusIndicator = document.getElementById('status-indicator');
-            
-            // HUD
-            this.hpDisplay = document.getElementById('hp-display');
-            this.creditsDisplay = document.getElementById('credits-display');
-            this.invDisplay = document.getElementById('inv-display');
-            
-            // Puzzle
-            this.puzzleContainer = document.getElementById('puzzle-container');
-            this.puzzleInput = document.getElementById('puzzle-input');
-            this.puzzleQuestion = document.getElementById('puzzle-question');
-
             this.history = [];
-            this.stats = { hp: 100, credits: 50, inventory: ["ID Card"], uiLocked: false };
-            
-            // Player Profile
-            this.playerProfile = { name: "Unknown", class: "Citizen", style: "Standard" };
+            this.currentCity = "Neo-Kowloon";
+            this.unlockedCities = ["Neo-Kowloon"];
+            this.stats = { hp: 100, credits: 50 };
+            this.playerProfile = {};
 
-            this.initAudio();
-            this.setupCreationScreen();
-            this.setupGameListeners();
+            this.ui = {
+                charScreen: document.getElementById('char-creation-screen'),
+                game: document.getElementById('game-ui'),
+                map: document.getElementById('map-screen'),
+                locDisplay: document.getElementById('current-loc-display'),
+                story: document.getElementById('story-text'),
+                img: document.getElementById('image-container'),
+                choices: document.getElementById('choice-container'),
+                puzzle: document.getElementById('puzzle-container'),
+                hp: document.getElementById('hp-display'),
+                cred: document.getElementById('credits-display')
+            };
+
+            this.init();
         }
 
-        setupCreationScreen() {
-            // Handle Class Selection
-            const classBtns = document.querySelectorAll('.class-btn');
-            classBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    classBtns.forEach(b => b.classList.remove('bg-[#00ff41]', 'text-black'));
-                    e.target.classList.add('bg-[#00ff41]', 'text-black');
-                    document.getElementById('char-class').value = e.target.getAttribute('data-val');
-                });
-            });
-
-            // Handle Start Button
+        init() {
             document.getElementById('jack-in-btn').addEventListener('click', () => {
-                const name = document.getElementById('char-name').value || "Runner";
-                const role = document.getElementById('char-class').value || "Mercenary";
-                const style = document.getElementById('char-style').value || "Cybernetic enhancements";
-
-                this.playerProfile = { name, class: role, style };
-                
-                // Switch Screens
-                this.screens.creation.classList.add('hidden');
-                this.screens.game.classList.remove('hidden');
-                
+                this.playerProfile = {
+                    name: document.getElementById('char-name').value || "V",
+                    class: document.getElementById('char-class').value || "Solo",
+                    style: document.getElementById('char-style').value || "Punk"
+                };
+                this.ui.charScreen.classList.add('hidden');
+                this.ui.game.classList.remove('hidden');
                 this.startSound();
-                this.updateHUD();
-                
-                // Start the game with the profile data
-                this.makeTurn(`Initialize. My name is ${name}. I am a ${role} looking like ${style}. Begin the story in a bar.`);
+                this.makeTurn(`Initialize game in ${this.currentCity}.`);
+            });
+
+            document.getElementById('map-toggle-btn').addEventListener('click', () => {
+                this.ui.map.classList.remove('hidden');
+                this.renderMap();
+            });
+            document.getElementById('close-map-btn').addEventListener('click', () => this.ui.map.classList.add('hidden'));
+
+            document.getElementById('submit-puzzle-btn').addEventListener('click', () => {
+                const val = document.getElementById('puzzle-input').value;
+                document.getElementById('puzzle-input').value = '';
+                this.makeTurn(`Puzzle Answer: ${val}`);
             });
         }
 
-        setupGameListeners() {
-            document.getElementById('submit-puzzle-btn').addEventListener('click', () => this.submitPuzzle());
-            this.puzzleInput.addEventListener('keypress', (e) => { if(e.key==='Enter') this.submitPuzzle() });
-        }
-
-        submitPuzzle() {
-            const val = this.puzzleInput.value.trim();
-            if(!val) return;
-            this.puzzleInput.value = '';
-            this.makeTurn(`I answer the puzzle: ${val}`);
-        }
-
-        async initAudio() {
-            this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
-            this.noise = new Tone.Noise("brown").start();
-            this.noise.volume.value = -Infinity;
-            this.noise.toDestination();
+        async startSound() {
             await Tone.start();
-        }
-        
-        startSound() {
-            this.noise.volume.rampTo(-45, 3);
-            this.synth.triggerAttackRelease(["C2", "E2"], "8n");
+            const synth = new Tone.PolySynth().toDestination();
+            synth.triggerAttackRelease(["C2", "G2"], "4n");
         }
 
-        async makeTurn(userAction) {
-            this.setLoading(true);
+        renderMap() {
+            const nodes = document.querySelectorAll('.city-node');
+            nodes.forEach(node => {
+                const cityName = node.getAttribute('data-city');
+                node.classList.remove('unlocked', 'active');
+                
+                if (cityName === this.currentCity) node.classList.add('unlocked', 'active');
+                else if (this.unlockedCities.includes(cityName)) node.classList.add('unlocked');
+
+                node.onclick = () => {
+                    if (this.unlockedCities.includes(cityName) && cityName !== this.currentCity) {
+                        this.currentCity = cityName;
+                        this.ui.map.classList.add('hidden');
+                        this.ui.locDisplay.innerText = `LOC: ${cityName.toUpperCase()}`;
+                        this.makeTurn(`Travel to ${cityName}. Describe the arrival.`);
+                    }
+                };
+            });
+        }
+
+        async makeTurn(action) {
+            this.ui.choices.innerHTML = '<div class="text-[#00ff41] animate-pulse">PROCESSING...</div>';
+
             try {
-                // Pass playerProfile in every request. 
-                // NOTE: Using relative path '/api/turn' for cloud compatibility
-                const response = await fetch('/api/turn', {
+                const res = await fetch('/api/turn', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        history: this.history, 
-                        userAction, 
+                    body: JSON.stringify({
+                        history: this.history,
+                        userAction: action,
                         currentStats: this.stats,
-                        playerProfile: this.playerProfile 
+                        playerProfile: this.playerProfile,
+                        currentCity: this.currentCity
                     })
                 });
 
-                const data = await response.json();
+                const data = await res.json();
                 
                 if (data.stats) this.stats = data.stats;
-                this.stats.uiLocked = data.uiLocked || false;
-                this.updateHUD();
+                this.ui.hp.innerText = this.stats.hp;
+                this.ui.cred.innerText = this.stats.credits;
 
-                this.history.push({ role: "user", content: userAction });
-                this.history.push({ role: "model", content: data.narrative });
-
-                if (data.imageUrl) {
-                     this.imageContainer.innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 border border-[#004400] filter sepia(50%) hue-rotate(90deg) contrast(120%)">`;
+                // Unlock logic
+                if (data.caseSolved) {
+                    const allCities = ["Neo-Kowloon", "The Zone", "Solaris District", "Trantor Deep", "Ubik Reality", "Magrathea Heights"];
+                    const nextCity = allCities.find(c => !this.unlockedCities.includes(c));
+                    if (nextCity) {
+                        this.unlockedCities.push(nextCity);
+                        data.narrative += `\n\n[SYSTEM]: CASE CLOSED. ${nextCity.toUpperCase()} ACCESS GRANTED.`;
+                    }
                 }
 
+                this.history.push({ role: 'user', content: action });
+                this.history.push({ role: 'model', content: data.narrative });
+
+                if (data.imageUrl) {
+                    this.ui.img.innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
+                }
+                
                 await this.typeText(data.narrative);
-                this.manageInterface(data);
+
+                if (data.uiLocked) {
+                    this.ui.choices.classList.add('hidden');
+                    this.ui.puzzle.classList.remove('hidden');
+                    document.getElementById('puzzle-input').placeholder = data.puzzleQuestion || "SOLVE...";
+                    document.getElementById('puzzle-input').focus();
+                } else {
+                    this.ui.puzzle.classList.add('hidden');
+                    this.ui.choices.classList.remove('hidden');
+                    this.ui.choices.innerHTML = '';
+                    data.choices.forEach(c => {
+                        const btn = document.createElement('button');
+                        btn.className = "choice-btn border border-[#00ff41] p-3 text-left uppercase";
+                        btn.innerText = `> ${c}`;
+                        btn.onclick = () => this.makeTurn(c);
+                        this.ui.choices.appendChild(btn);
+                    });
+                }
 
             } catch (e) {
                 console.error(e);
-                this.storyContainer.innerText += "\n\n>> CONNECTION ERROR. REFRESH TO RETRY.";
-            } finally {
-                this.setLoading(false);
-                if(this.stats.uiLocked) this.puzzleInput.focus();
-            }
-        }
-
-        manageInterface(data) {
-            if (data.isGameOver) {
-                this.choiceContainer.innerHTML = `<button onclick="location.reload()" class="choice-btn col-span-2 text-red-500 border-red-500">FLATLINED // REBOOT</button>`;
-                return;
-            }
-            
-            if (this.stats.uiLocked) {
-                this.choiceContainer.classList.add('hidden');
-                this.puzzleContainer.classList.remove('hidden');
-                this.puzzleQuestion.innerText = data.puzzleQuestion || ">> DECRYPT REQUIRED";
-                this.puzzleInput.focus();
-            } else {
-                this.puzzleContainer.classList.add('hidden');
-                this.choiceContainer.classList.remove('hidden');
-                this.choiceContainer.innerHTML = '';
-                data.choices.forEach(c => {
-                    const btn = document.createElement('button');
-                    btn.className = "choice-btn border border-[#00ff41] p-3 text-left hover:bg-[#00ff41] hover:text-black uppercase";
-                    btn.innerText = `> ${c}`;
-                    btn.onclick = () => this.makeTurn(c);
-                    this.choiceContainer.appendChild(btn);
-                });
+                this.ui.story.innerText = "CONNECTION LOST. REFRESH TO RETRY.";
             }
         }
 
         async typeText(text) {
-            this.storyContainer.innerHTML = '';
+            this.ui.story.innerHTML = '';
             let h = '';
             for(let c of text) {
                 h += c;
-                this.storyContainer.innerHTML = h + '<span class="animate-pulse">_</span>';
-                await new Promise(r=>setTimeout(r,10));
+                this.ui.story.innerHTML = h + '<span class="animate-pulse">_</span>';
+                await new Promise(r=>setTimeout(r, 5));
             }
-            this.storyContainer.innerHTML = h;
-        }
-        
-        updateHUD() {
-            this.hpDisplay.innerText = this.stats.hp + "%";
-            this.creditsDisplay.innerText = this.stats.credits;
-            this.invDisplay.innerText = this.stats.inventory.join(", ");
-        }
-
-        setLoading(b) {
-            this.statusIndicator.innerText = b ? "PROCESSING..." : "CONNECTED";
-            this.statusIndicator.className = b ? "text-red-500 animate-pulse" : "text-[#00ff41]";
-            if(b) this.choiceContainer.innerHTML = '<div class="text-[#00ff41] animate-pulse">UPLINKING...</div>';
+            this.ui.story.innerHTML = h;
         }
     }
 
-    const game = new CyberpunkRPG();
+    new CyberpunkRPG();
     </script>
 </body>
 </html>
