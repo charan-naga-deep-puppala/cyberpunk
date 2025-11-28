@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
@@ -10,40 +9,25 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize SDK
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-const CITIES = {
-    "Neo-Kowloon": "Rain. Neon. Noodle stands. Concrete.",
-    "The Scrapyard": "Rust. Fire. Metal crushers.",
-    "Solaris District": "Water. Glass. Strange lights.",
-    "Magrathea Heights": "Gold. Fake sun. Clean air.",
-    "Trantor Deep": "Metal walls. Pipes. Steam.",
-    "The Zone": "Trees. Radiation. Silence.",
-    "Ubik Reality": "Old houses. Fading colors. Decay."
-};
 
 const SYSTEM_INSTRUCTION = `
 You are the Game Master of a Sci-Fi RPG.
 
-### WRITING RULES (STRICT):
-1. **Never use a metaphor, simile, or figure of speech.**
-2. **Never use a long word where a short one will do.**
-3. **If it is possible to cut a word out, always cut it out.**
-4. **Never use the passive where you can use the active.**
-5. **Use everyday English.**
-6. **NO SOUND EFFECTS.**
-7. **FORMAT:** Write in clear paragraphs. No screenplay format.
-
-### STRUCTURE:
-- **INTRODUCTION:** Can be detailed for lore.
-- **TURNS:** Direct action and reaction.
-- **PERSPECTIVE:** Second person ("You see...", "You do...").
+### WRITING STYLE (GEORGE ORWELL RULES):
+1. **Introduction (Turn 1):** detailed, atmospheric, establish the lore.
+2. **All Other Turns:** SHORT. PUNCHY.
+   - Never use a metaphor or simile.
+   - Never use a long word where a short one will do.
+   - If it is possible to cut a word out, always cut it out.
+   - Never use the passive voice.
+   - NO SOUND EFFECTS in text.
+3. **Format:** Use simple paragraphs.
 
 ### MECHANICS:
-1. **COMBAT:** Headshots or Core hits are fatal. Player death = "isGameOver": true.
-2. **CHARACTERS:** If a NEW NPC appears, add to "newCharacters".
-3. **LANGUAGE:** Respond ONLY in [LANGUAGE].
+- **COMBAT:** Headshots/Core hits are fatal. Player death = "isGameOver": true.
+- **CHARACTERS:** If a NEW NPC appears, add to "newCharacters".
+- **LANGUAGE:** Respond ONLY in [LANGUAGE].
 
 JSON FORMAT:
 {
@@ -61,38 +45,31 @@ JSON FORMAT:
 }
 `;
 
-// --- NEW IMAGE GENERATION FUNCTION (Based on your snippet) ---
+// --- NATIVE GEMINI IMAGE GENERATION ---
 async function generateGeminiImage(prompt) {
     try {
-        console.log(">> Generating Image with Gemini 2.5 Flash...");
-        
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-image", // Hardcoded as requested
+            model: "gemini-2.5-flash-image", 
             contents: "Create a cyberpunk noir style illustration: " + prompt,
         });
-
-        // Extract base64 image data from the response
         for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-                // Construct the data URL for the frontend
-                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            }
+            if (part.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
-        
-        console.warn(">> No inlineData found in Gemini response.");
         return null;
-
     } catch (error) {
-        console.error(">> Gemini Image Error:", error);
-        return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+FEED+ERROR";
+        console.error("Image Gen Error:", error);
+        return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+DATA+CORRUPT";
     }
 }
 
 app.post('/api/turn', async (req, res) => {
     try {
-        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory } = req.body;
+        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory, turnCount } = req.body;
         
-        // Origin Story Logic
+        if (!turnCount) turnCount = 0;
+        turnCount++;
+
+        // --- ORIGIN STORY LOGIC ---
         if (history.length === 0) {
             if (playerProfile.archetype === "RAVEN") {
                 currentCity = "Neo-Kowloon";
@@ -100,27 +77,25 @@ app.post('/api/turn', async (req, res) => {
             } else if (playerProfile.archetype === "I-6") {
                 currentCity = "The Scrapyard";
                 userAction = "I am Unit I-6. My systems reboot. I lie on a conveyor belt moving toward a furnace. I must escape.";
+            } else if (playerProfile.archetype === "GARGANTUS") {
+                currentCity = "Gargantus Space";
+                userAction = "I approach the anomaly. The sensors scream. Logic fails here.";
             } else {
                 currentCity = "Neo-Kowloon";
                 userAction = `I am ${playerProfile.name}, a ${playerProfile.class}. ${playerProfile.backstory}`;
             }
         }
 
-        const cityVibe = CITIES[currentCity] || "Cyberpunk City";
-        
         let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n`;
-        fullPrompt += `LANGUAGE: ${language || 'English'}\n`;
-        fullPrompt += `PLAYER: ${playerProfile?.name} (${playerProfile?.class})\n`;
-        fullPrompt += `LOC: ${currentCity} (${cityVibe})\n`;
-        fullPrompt += `STATUS: HP=${currentStats.hp}\n`;
-        fullPrompt += `INVENTORY: ${JSON.stringify(inventory)}\n`;
+        fullPrompt += `LANGUAGE: ${language}\n`;
+        fullPrompt += `CONTEXT: Turn ${turnCount}. Player: ${playerProfile.name} (${playerProfile.class}). Location: ${currentCity}.\n`;
+        fullPrompt += `STATUS: HP=${currentStats.hp}. Inventory: ${JSON.stringify(inventory)}\n`;
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
         fullPrompt += `HISTORY:\n`;
         history.slice(-6).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
-        // MODEL HARDCODED TO 2.5 FLASH
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
@@ -129,21 +104,12 @@ app.post('/api/turn', async (req, res) => {
 
         const gameData = JSON.parse(textResponse.text());
 
-        // Image Generation Call
+        // Image Logic
         let finalImageUrl = "";
-        const isFirstTurn = history.length === 0;
-
-        // Use the new Gemini Image function
-        if (isFirstTurn) {
+        if (history.length === 0) {
             finalImageUrl = await generateGeminiImage(`Portrait of ${playerProfile.name}, ${playerProfile.style}, inside ${currentCity}`);
         } else if (gameData.enemyName) {
-            const slug = gameData.enemyName.trim().toLowerCase().replace(/\s+/g, '-');
-            if (enemyRegistry.has(slug)) {
-                finalImageUrl = enemyRegistry.get(slug);
-            } else {
-                finalImageUrl = await generateGeminiImage("Character portrait of " + gameData.visual_prompt);
-                enemyRegistry.set(slug, finalImageUrl);
-            }
+            finalImageUrl = await generateGeminiImage("Character portrait of " + gameData.visual_prompt);
         } else if (gameData.inCombat) {
              finalImageUrl = await generateGeminiImage(`Action shot, combat, ${gameData.visual_prompt}`);
         } else {
@@ -152,6 +118,7 @@ app.post('/api/turn', async (req, res) => {
 
         gameData.currentCity = currentCity; 
         gameData.imageUrl = finalImageUrl;
+        gameData.turnCount = turnCount;
         
         res.json(gameData);
 
@@ -167,7 +134,6 @@ app.post('/api/summary', async (req, res) => {
         let prompt = `Role: Database. Summarize in ${language}. Sections: OBJECTIVE, EVENTS, THREATS. Use simple words.\n\nLOG:\n`;
         history.forEach(t => prompt += `${t.role}: ${t.content}\n`);
         
-        // MODEL HARDCODED TO 2.5 FLASH
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
