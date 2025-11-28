@@ -33,24 +33,22 @@
         #story-log { font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; line-height: 1.6; color: #e0e0e0; }
         #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
 
+        /* PIXEL ART STATS */
         .heart-icon { width: 16px; height: 16px; display: inline-block; margin-right: 2px; background-size: cover; image-rendering: pixelated; }
         .heart-full { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" d="M2 2h2v2H2zM6 2h2v2H6zM1 4h2v2H1zM7 4h2v2H7zM2 6h6v2H2zM3 8h4v2H3z"/></svg>'); }
         .heart-empty { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23330000" d="M2 2h2v2H2zM6 2h2v2H6zM1 4h2v2H1zM7 4h2v2H7zM2 6h6v2H2zM3 8h4v2H3z"/></svg>'); }
-        
         .core-icon { width: 16px; height: 16px; display: inline-block; margin-right: 2px; border: 2px solid #00ffff; background: #00ffff; box-shadow: 0 0 5px #00ffff; }
         .core-empty { background: transparent; border-color: #004444; box-shadow: none; }
-
         .pixel-coin { display: inline-block; width: 8px; height: 14px; background: #ffee00; margin-right: 2px; border-radius: 2px; }
         
+        /* LIST ITEMS */
         .npc-item { font-size: 1rem; border: 1px solid #004400; padding: 8px; cursor: pointer; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
         .npc-item:hover { background: #002200; border-color: #00ff41; }
         .npc-icon { width: 24px; height: 24px; background: #003300; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
         .inv-item { font-size: 1.1rem; padding: 6px; border-bottom: 1px dashed #004400; cursor: help; }
         .inv-item:hover { color: #ccffcc; background: #002200; }
-
         .loot-item { border: 1px solid #ffff00; color: #ffff00; padding: 10px; margin: 5px; cursor: pointer; text-align: center; background: rgba(50,50,0,0.5); font-weight: bold; width: 100%; }
         .loot-item:hover { background: #555500; }
-        
         .ability-btn { border: 1px solid cyan; color: cyan; padding: 8px; text-transform: uppercase; cursor: pointer; text-align: center; background: #001111; }
         .ability-btn:hover { background: cyan; color: black; }
     </style>
@@ -60,7 +58,7 @@
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0 relative z-50">
-        <span>NEON_PROTOCOL // V.30.0</span>
+        <span>NEON_PROTOCOL // V.34.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -95,18 +93,15 @@
         <div id="list-standard" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl relative z-50">
             <div class="char-card" onclick="selectArchetype('RAVEN', this)">
                 <h2 class="text-3xl font-bold mb-2">RAVEN</h2>
-                <p class="text-lg text-gray-400">Class: Detective</p>
-                <p class="text-sm mt-2">Dilemma: Justice vs. Morality. Neo-Kowloon.</p>
+                <p class="text-lg text-gray-400">Detective. Justice or Death.</p>
             </div>
             <div class="char-card" onclick="selectArchetype('I-6', this)">
                 <h2 class="text-3xl font-bold mb-2">UNIT I-6</h2>
-                <p class="text-lg text-gray-400">Class: Rogue AI</p>
-                <p class="text-sm mt-2">Theme: Nihilism. The Scrapyard.</p>
+                <p class="text-lg text-gray-400">Rogue AI. Existential Dread.</p>
             </div>
             <div class="char-card" onclick="selectArchetype('CUSTOM', this)">
                 <h2 class="text-3xl font-bold mb-2">THE ANOMALY</h2>
-                <p class="text-lg text-gray-400">Class: Custom</p>
-                <p class="text-sm mt-2">Unknown Origin.</p>
+                <p class="text-lg text-gray-400">Unknown Origin.</p>
             </div>
         </div>
 
@@ -114,7 +109,6 @@
             <div class="char-card" onclick="selectArchetype('GARGANTUS', this)">
                 <h2 class="text-3xl font-bold mb-2 text-yellow-400">TRIP TO GARGANTUS</h2>
                 <p class="text-lg">Author: Lem-Inspired</p>
-                <p class="text-sm mt-2">Satirical, Absurdist, Philosophical.</p>
             </div>
         </div>
         
@@ -134,19 +128,16 @@
                 <div class="text-yellow-400 font-bold text-sm mt-2">CREDITS</div>
                 <div id="pixel-cred" class="flex flex-wrap gap-1 min-h-[14px]"></div>
             </div>
-
+            
             <div class="mt-2 border-b border-[#004400] pb-4">
-                <div class="text-cyan-400 font-bold text-sm mb-2">ACTIVE ABILITIES</div>
+                <div class="text-cyan-400 font-bold text-xs mb-2">ACTIVE ABILITIES</div>
                 <div id="ability-list" class="grid grid-cols-2 gap-2"></div>
             </div>
 
             <div class="flex-1 flex flex-col overflow-hidden mt-2">
-                <div class="text-[#00ff41] font-bold mb-2 uppercase text-sm">Associates</div>
-                <div id="char-list" class="flex-1 overflow-y-auto pr-1">
-                    <div class="text-gray-600 italic text-sm">No records.</div>
-                </div>
+                <div class="text-[#00ff41] font-bold mb-2 uppercase text-sm">Known Associates</div>
+                <div id="char-list" class="flex-1 overflow-y-auto pr-1"></div>
             </div>
-            
             <div class="mt-auto flex flex-col gap-3 pt-2 border-t border-[#004400]">
                 <button onclick="toggleMap()" class="btn-main text-center text-yellow-500 border-yellow-500 text-sm py-2">TRANSIT MAP</button>
                 <button onclick="toggleCaseFile()" class="btn-main text-center text-cyan-500 border-cyan-500 text-sm py-2">CASE FILE</button>
@@ -168,10 +159,16 @@
             </div>
 
             <div id="story-log" class="flex-1 overflow-y-auto p-4 text-xl relative"></div>
+
+            <div id="loot-area" class="hidden p-2 border-t border-yellow-500 bg-[#1a1a00] z-20">
+                <div class="text-yellow-500 text-xs font-bold mb-1">SCANNER DETECTED:</div>
+                <div id="loot-list" class="flex gap-2 flex-wrap"></div>
+            </div>
+
             <div id="choices-area" class="grid grid-cols-2 gap-3 mt-2 pt-2 border-t border-[#004400]"></div>
             
             <div id="puzzle-area" class="hidden flex gap-2 mt-2">
-                <input id="puzzle-in" class="flex-1 bg-[#001100] border border-red-500 text-red-500 p-2 text-xl outline-none" placeholder="DECRYPT...">
+                <input id="puzzle-in" class="flex-1 bg-[#001100] border border-red-500 text-red-500 p-2 text-xl outline-none" placeholder="ENTER CODE...">
                 <button onclick="submitPuzzle()" class="btn-main border-red-500 text-red-500">SEND</button>
             </div>
         </div>
@@ -184,13 +181,6 @@
             </div>
             <div id="inv-list" class="flex-1 overflow-y-auto content-start flex flex-col gap-2 p-1 mt-2"></div>
             <div id="item-info" class="h-32 border-t border-[#004400] p-2 text-base text-gray-400 italic">Hover items for data.</div>
-        </div>
-    </div>
-
-    <div id="overlay-loot" class="overlay hidden">
-        <div class="panel w-full max-w-lg border-yellow-500 relative z-50">
-            <div class="flex justify-between border-b border-yellow-500 pb-2"><h2 class="text-2xl text-yellow-500">OBJECTS DETECTED</h2><button onclick="closeOverlay('overlay-loot')" class="text-yellow-500 text-xl">[X]</button></div>
-            <div id="loot-list" class="flex flex-col gap-2 p-4 max-h-96 overflow-y-auto"></div>
         </div>
     </div>
 
@@ -220,7 +210,8 @@
 
     <div id="screen-gameover" class="overlay hidden flex-col gap-6">
         <h1 class="text-8xl text-red-600 font-bold tracking-widest animate-pulse">TERMINATED</h1>
-        <button onclick="location.reload()" class="btn-main text-red-500 border-red-500 text-3xl px-12 relative z-50">REBOOT SYSTEM</button>
+        <p id="death-cause" class="text-red-300 text-xl font-mono text-center max-w-2xl"></p>
+        <button onclick="location.reload()" class="btn-main text-red-500 border-red-500 text-3xl px-12 relative z-50 interactive">REBOOT SYSTEM</button>
     </div>
 
     <script>
@@ -248,7 +239,10 @@
     };
 
     let selectedArch = null;
-    let bgm = null; // Defined in initGame
+    let bgm = new Audio('EastHastings.mp3');
+    bgm.loop = true;
+    bgm.volume = 0.5;
+    bgm.onerror = () => console.log(">> AUDIO MISSING");
 
     function setLanguage(lang) {
         state.lang = lang;
@@ -288,11 +282,7 @@
     }
 
     function initGame() {
-        // AUDIO INIT
-        bgm = new Audio('EastHastings.mp3');
-        bgm.loop = true;
-        bgm.volume = 0.5;
-        bgm.play().catch(e => console.log("Audio Error (File missing?):", e));
+        bgm.play().catch(e => console.log("Audio Error:", e));
 
         if (selectedArch === 'RAVEN') {
             state.profile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir trenchcoat, smoking", abilities: ["FORENSICS", "INTIMIDATE"] };
@@ -348,19 +338,20 @@
             state.turnCount = data.turnCount;
             
             if (data.stats) { state.stats = data.stats; renderStats(); }
-            
             if (data.currentCity) {
                 state.currentCity = data.currentCity;
                 if(!state.unlockedCities.includes(data.currentCity)) state.unlockedCities.push(data.currentCity);
                 document.getElementById('current-loc-display').innerText = `LOC: ${state.currentCity.toUpperCase()}`;
             }
 
+            // INVENTORY LOGIC FIXED (UNDEFINED FIX)
             if (data.inventoryUpdates && data.inventoryUpdates.add) {
                 data.inventoryUpdates.add.forEach(i => {
+                    const itemName = i.item || i.name || i; // Handle raw strings or objects
                     let cat = i.category || 'items';
                     if (!cat.endsWith('s')) cat += 's';
                     if(!state.inventory[cat]) cat = 'items'; 
-                    state.inventory[cat].push(i.item);
+                    state.inventory[cat].push(itemName);
                 });
                 renderInventory();
             }
@@ -372,9 +363,10 @@
                 renderCharacters();
             }
 
-            // LOOTING MODAL
+            const lootArea = document.getElementById('loot-area');
+            const lootList = document.getElementById('loot-list');
             if (data.availableItems && data.availableItems.length > 0) {
-                const lootList = document.getElementById('loot-list');
+                lootArea.classList.remove('hidden');
                 lootList.innerHTML = '';
                 data.availableItems.forEach(item => {
                     const btn = document.createElement('div');
@@ -382,12 +374,13 @@
                     btn.innerHTML = `[PICK UP] ${item.name}`;
                     btn.onclick = () => {
                         btn.remove();
-                        if(lootList.children.length === 0) closeOverlay('overlay-loot');
-                        makeTurn(`I pick up the ${item.name}.`);
+                        if(lootList.children.length === 0) lootArea.classList.add('hidden');
+                        makeTurn(`I take the ${item.name}.`);
                     };
                     lootList.appendChild(btn);
                 });
-                document.getElementById('overlay-loot').classList.remove('hidden');
+            } else {
+                lootArea.classList.add('hidden');
             }
 
             state.history.push({ role: 'user', content: action || "Start" });
@@ -400,7 +393,7 @@
             }
             if (data.imageUrl) document.getElementById('img-container').innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
 
-            typeText(data.narrative);
+            await typeText(data.narrative);
 
             if (data.inCombat && data.enemyStats) {
                 state.enemyStats = data.enemyStats;
@@ -417,13 +410,17 @@
 
             choicesDiv.innerHTML = '';
             if(data.isGameOver) {
+                document.getElementById('death-cause').innerText = `CAUSE: ${data.narrative.split('.').slice(-2).join('. ')}`; 
+                await new Promise(r => setTimeout(r, 2500));
                 document.getElementById('screen-gameover').classList.remove('hidden');
                 document.getElementById('screen-gameover').classList.add('flex');
                 document.getElementById('overlay-summary').classList.remove('hidden');
                 fetchSummary();
             } else if(data.uiLocked) {
                 document.getElementById('puzzle-area').classList.remove('hidden');
-                document.getElementById('puzzle-in').placeholder = data.puzzleQuestion || "SOLVE...";
+                document.getElementById('puzzle-in').value = '';
+                document.getElementById('puzzle-in').placeholder = data.puzzleQuestion || "ENTER CODE...";
+                document.getElementById('puzzle-in').focus();
             } else {
                 document.getElementById('puzzle-area').classList.add('hidden');
                 data.choices.forEach(c => {
@@ -455,7 +452,6 @@
         const hpContainer = document.getElementById('pixel-hp');
         hpContainer.innerHTML = '';
         const hearts = Math.ceil(state.stats.hp / 10);
-        
         const isRobot = (state.profile.archetype === 'I-6');
         const iconClass = isRobot ? 'core-icon' : 'heart-icon';
         const emptyClass = isRobot ? 'core-empty' : 'heart-empty';
@@ -479,13 +475,15 @@
     function renderAbilities() {
         const list = document.getElementById('ability-list');
         list.innerHTML = '';
-        state.profile.abilities.forEach(ab => {
-            const btn = document.createElement('div');
-            btn.className = "ability-btn";
-            btn.innerText = ab;
-            btn.onclick = () => makeTurn(`I use my ability: ${ab}`);
-            list.appendChild(btn);
-        });
+        if(state.profile.abilities) {
+            state.profile.abilities.forEach(ab => {
+                const btn = document.createElement('div');
+                btn.className = "ability-btn";
+                btn.innerText = ab;
+                btn.onclick = () => makeTurn(`I use ability: ${ab}`);
+                list.appendChild(btn);
+            });
+        }
     }
 
     function renderCharacters() {
@@ -526,7 +524,6 @@
         const list = document.getElementById('city-list');
         list.innerHTML = '';
         const allCities = ["Neo-Kowloon", "The Scrapyard", "Solaris District", "Trantor Deep", "Ubik Reality", "The Zone", "Gargantus Space"];
-        
         allCities.forEach(city => {
             const div = document.createElement('div');
             const isUnlocked = state.unlockedCities.includes(city);
