@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON PROTOCOL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body { background-color: #050505; color: #00ff41; font-family: 'VT323', monospace; overflow: hidden; }
+        .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10; }
+        @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
+        .crt-flicker { animation: flicker 0.15s infinite; }
+        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
+        
+        /* Button Styles */
+        .choice-btn { border: 1px solid #00ff41; padding: 0.75rem; text-align: left; transition: all 0.2s; text-transform: uppercase; }
+        .choice-btn:hover:not(:disabled) { background-color: #00ff41; color: #000; cursor: pointer; }
+        .choice-btn:disabled { opacity: 0.3; border-color: #444; color: #444; cursor: not-allowed; }
+        
+        .hud-box { border: 1px solid #004400; background: #001100; padding: 0 8px; }
+
+        /* Puzzle Input Styles */
+        #puzzle-input { background: #001100; border: 1px solid #00ff41; color: #00ff41; padding: 8px; font-family: 'VT323'; width: 100%; }
+        #puzzle-input:focus { outline: none; background: #002200; }
+    </style>
+</head>
+<body class="h-screen w-screen flex items-center justify-center crt-flicker">
+
+    <div class="relative w-full max-w-4xl h-[95vh] border-4 border-[#003300] bg-black p-4 rounded-md flex flex-col gap-3">
+        <div class="scanlines"></div>
+        
+        <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80">
+            <span>NEON_PROTOCOL // V.4.0</span>
+            <span id="status-indicator">CONNECTED</span>
+        </div>
+
+        <div class="flex flex-row justify-between text-lg gap-2">
+            <div class="hud-box flex-1 flex justify-between"><span>VITALS:</span><span id="hp-display" class="text-red-500">100%</span></div>
+            <div class="hud-box flex-1 flex justify-between"><span>CREDS:</span><span id="credits-display" class="text-yellow-400">50</span></div>
+            <div class="hud-box flex-[2] overflow-hidden whitespace-nowrap text-ellipsis"><span class="opacity-70">INV: </span><span id="inv-display">ID Card</span></div>
+        </div>
+
+        <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative z-0">
+            <div class="w-full md:w-1/2 flex flex-col gap-2">
+                <div id="image-container" class="flex-1 border border-[#004400] bg-[#001100] relative overflow-hidden flex items-center justify-center">
+                    <span class="opacity-50 text-center animate-pulse">AWAITING LINK...</span>
+                </div>
+            </div>
+
+            <div class="w-full md:w-1/2 flex flex-col">
+                <div id="story-text" class="flex-1 overflow-y-auto text-lg leading-relaxed whitespace-pre-line p-2 border-l border-[#004400]">
+                    System Initialized. 
+                </div>
+            </div>
+        </div>
+
+        <div id="interaction-area" class="border-t border-[#00ff41] pt-4 min-h-[120px]">
+            <div id="choice-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button id="start-btn" class="choice-btn col-span-2 text-center tracking-widest">INITIALIZE SIMULATION</button>
+            </div>
+
+            <div id="puzzle-container" class="hidden flex flex-col gap-2">
+                 <div class="text-red-500 animate-pulse">>> WARNING: NEURAL INTERFACE LOCKED. SOLVE TO RESTORE. <<</div>
+                 <div id="puzzle-question" class="text-[#00ff41] opacity-80 mb-2"></div>
+                 <div class="flex gap-2">
+                    <input type="text" id="puzzle-input" placeholder="TYPE SOLUTION..." autocomplete="off">
+                    <button id="submit-puzzle-btn" class="choice-btn">TRANSMIT</button>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    class CyberpunkRPG {
+        constructor() {
+            this.storyContainer = document.getElementById('story-text');
+            this.choiceContainer = document.getElementById('choice-container');
+            this.puzzleContainer = document.getElementById('puzzle-container');
+            this.puzzleInput = document.getElementById('puzzle-input');
+            this.puzzleQuestionDisplay = document.getElementById('puzzle-question');
+            this.imageContainer = document.getElementById('image-container');
+            this.statusIndicator = document.getElementById('status-indicator');
+            
+            this.hpDisplay = document.getElementById('hp-display');
+            this.creditsDisplay = document.getElementById('credits-display');
+            this.invDisplay = document.getElementById('inv-display');
+
+            this.isProcessing = false;
+            this.history = [];
+            this.stats = { hp: 100, credits: 50, inventory: ["ID Card"], uiLocked: false };
+
+            // Start Audio Engine
+            this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            this.noise = new Tone.Noise("brown").start();
+            this.noise.volume.value = -Infinity;
+            this.noise.toDestination();
+
+            this.setupEventListeners();
+        }
+
+        setupEventListeners() {
+            document.getElementById('start-btn').addEventListener('click', () => {
+                this.noise.volume.rampTo(-45, 3);
+                this.synth.triggerAttackRelease(["C2", "G2"], "4n");
+                this.updateHUD(); 
+                this.makeTurn("Start the game. I am in my apartment.");
+            });
+
+            document.getElementById('submit-puzzle-btn').addEventListener('click', () => this.submitPuzzleAnswer());
+            this.puzzleInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') this.submitPuzzleAnswer(); });
+        }
+
+        submitPuzzleAnswer() {
+            const answer = this.puzzleInput.value.trim();
+            if (!answer) return;
+            this.puzzleInput.value = ''; 
+            this.makeTurn(`I answer the puzzle with: "${answer}"`);
+        }
+
+        updateHUD() {
+            this.hpDisplay.innerText = this.stats.hp + "%";
+            this.creditsDisplay.innerText = this.stats.credits;
+            this.invDisplay.innerText = this.stats.inventory.join(", ");
+            this.hpDisplay.className = this.stats.hp > 50 ? "text-[#00ff41]" : "text-red-600 font-bold crt-flicker";
+        }
+
+        setLoading(isLoading) {
+            this.isProcessing = isLoading;
+            this.statusIndicator.innerText = isLoading ? "PROCESSING..." : "CONNECTED";
+            this.statusIndicator.classList.toggle("animate-pulse", isLoading);
+            const choices = this.choiceContainer.querySelectorAll('button');
+            choices.forEach(b => b.disabled = isLoading);
+            document.getElementById('submit-puzzle-btn').disabled = isLoading;
+            this.puzzleInput.disabled = isLoading;
+        }
+
+        async makeTurn(userAction) {
+            if (this.isProcessing) return;
+            this.setLoading(true);
+
+            try {
+                const response = await fetch('http://localhost:3000/api/turn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        history: this.history, 
+                        userAction: userAction, 
+                        currentStats: this.stats 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.stats) this.stats = data.stats;
+                this.stats.uiLocked = data.uiLocked || false; 
+                this.updateHUD();
+
+                this.history.push({ role: "user", content: userAction });
+                this.history.push({ role: "model", content: data.narrative });
+
+                if (data.imageUrl) {
+                    this.imageContainer.innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 border border-[#004400] filter sepia(50%) hue-rotate(90deg) contrast(120%)">`;
+                }
+                
+                await this.typeText(data.narrative);
+                this.manageInterfaceState(data);
+
+            } catch (err) {
+                console.error(err);
+                this.storyContainer.innerText += "\n\n>> CONNECTION FAILURE.";
+            } finally {
+                this.setLoading(false);
+                if(this.stats.uiLocked) this.puzzleInput.focus();
+            }
+        }
+
+        manageInterfaceState(data) {
+            if (data.isGameOver) {
+                this.choiceContainer.classList.remove('hidden');
+                this.puzzleContainer.classList.add('hidden');
+                this.choiceContainer.innerHTML = `<button onclick="location.reload()" class="choice-btn col-span-2 border-red-500 text-red-500 hover:bg-red-900">FLATLINED // REBOOT SYSTEM</button>`;
+                return;
+            }
+
+            if (this.stats.uiLocked) {
+                this.choiceContainer.classList.add('hidden');
+                this.puzzleContainer.classList.remove('hidden');
+                this.puzzleQuestionDisplay.innerText = data.puzzleQuestion || ">> DECRYPT REQUIRED...";
+            } else {
+                this.choiceContainer.classList.remove('hidden');
+                this.puzzleContainer.classList.add('hidden');
+                this.renderChoices(data.choices);
+            }
+        }
+
+        async typeText(text) {
+            this.storyContainer.innerHTML = '';
+            let currentHTML = '';
+            for (let char of text.split('')) {
+                currentHTML += char;
+                this.storyContainer.innerHTML = currentHTML + '<span class="animate-pulse">_</span>';
+                await new Promise(r => setTimeout(r, 10));
+            }
+            this.storyContainer.innerHTML = currentHTML;
+        }
+
+        renderChoices(choices) {
+            this.choiceContainer.innerHTML = '';
+            choices.forEach(choiceText => {
+                const btn = document.createElement('button');
+                btn.className = "choice-btn";
+                btn.innerText = `> ${choiceText}`;
+                btn.onclick = () => this.makeTurn(choiceText);
+                this.choiceContainer.appendChild(btn);
+            });
+        }
+    }
+
+    const game = new CyberpunkRPG();
+    </script>
+</body>
+</html>
