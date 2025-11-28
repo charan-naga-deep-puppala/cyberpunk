@@ -104,7 +104,7 @@ app.post('/api/turn', async (req, res) => {
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-1.5-flash', 
+            model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
@@ -159,3 +159,4 @@ app.post('/api/summary', async (req, res) => {
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.listen(port, () => console.log(`Server running on port ${port}`));
+
