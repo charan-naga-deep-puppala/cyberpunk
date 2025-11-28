@@ -10,8 +10,8 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Initialize SDK
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const enemyRegistry = new Map();
 
 const CITIES = {
     "Neo-Kowloon": "Rain. Neon. Noodle stands. Concrete.",
@@ -27,16 +27,17 @@ const SYSTEM_INSTRUCTION = `
 You are the Game Master of a Sci-Fi RPG.
 
 ### WRITING RULES (STRICT):
-1. **Never use a metaphor, simile, or figure of speech.** 2. **Never use a long word where a short one will do.**
+1. **Never use a metaphor, simile, or figure of speech.**
+2. **Never use a long word where a short one will do.**
 3. **If it is possible to cut a word out, always cut it out.**
 4. **Never use the passive where you can use the active.**
-5. **Use everyday English** (Scientific/Sci-Fi terms are allowed only when necessary).
-6. **NO SOUND EFFECTS** (Do not write *click*, *bang*, etc).
-7. **FORMAT:** Write in clear paragraphs. Do not use screenplay format.
+5. **Use everyday English.**
+6. **NO SOUND EFFECTS.**
+7. **FORMAT:** Write in clear paragraphs. No screenplay format.
 
 ### STRUCTURE:
-- **INTRODUCTION:** Can be long. Establish the setting and the stakes clearly.
-- **SUBSEQUENT TURNS:** Keep it direct. Action and reaction.
+- **INTRODUCTION:** Can be detailed for lore.
+- **TURNS:** Direct action and reaction.
 - **PERSPECTIVE:** Second person ("You see...", "You do...").
 
 ### MECHANICS:
@@ -60,18 +61,30 @@ JSON FORMAT:
 }
 `;
 
-async function generateImagenImage(prompt) {
+// --- NEW IMAGE GENERATION FUNCTION (Based on your snippet) ---
+async function generateGeminiImage(prompt) {
     try {
-        const response = await ai.models.generateImages({
-            model: 'imagen-3.0-generate-001', 
-            prompt: "Cyberpunk sci-fi style, cinematic, detailed. " + prompt,
-            config: { numberOfImages: 1, aspectRatio: "16:9" },
+        console.log(">> Generating Image with Gemini 2.5 Flash...");
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash-image", // Hardcoded as requested
+            contents: "Create a cyberpunk noir style illustration: " + prompt,
         });
-        const imgBytes = response.generatedImages[0].image.imageBytes;
-        return `data:image/png;base64,${imgBytes}`;
+
+        // Extract base64 image data from the response
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                // Construct the data URL for the frontend
+                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            }
+        }
+        
+        console.warn(">> No inlineData found in Gemini response.");
+        return null;
+
     } catch (error) {
-        const seed = Math.floor(Math.random() * 9999);
-        return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
+        console.error(">> Gemini Image Error:", error);
+        return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+FEED+ERROR";
     }
 }
 
@@ -104,36 +117,37 @@ app.post('/api/turn', async (req, res) => {
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
         fullPrompt += `HISTORY:\n`;
-        // Send less history to encourage immediate focus, but enough for context
         history.slice(-6).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
+        // MODEL HARDCODED TO 2.5 FLASH
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
 
-        const gameData = JSON.parse(textResponse.text);
+        const gameData = JSON.parse(textResponse.text());
 
-        // Image Generation
+        // Image Generation Call
         let finalImageUrl = "";
         const isFirstTurn = history.length === 0;
 
+        // Use the new Gemini Image function
         if (isFirstTurn) {
-            finalImageUrl = await generateImagenImage(`Portrait of ${playerProfile.name}, ${playerProfile.style}, inside ${currentCity}`);
+            finalImageUrl = await generateGeminiImage(`Portrait of ${playerProfile.name}, ${playerProfile.style}, inside ${currentCity}`);
         } else if (gameData.enemyName) {
             const slug = gameData.enemyName.trim().toLowerCase().replace(/\s+/g, '-');
             if (enemyRegistry.has(slug)) {
                 finalImageUrl = enemyRegistry.get(slug);
             } else {
-                finalImageUrl = await generateImagenImage("Character portrait of " + gameData.visual_prompt);
+                finalImageUrl = await generateGeminiImage("Character portrait of " + gameData.visual_prompt);
                 enemyRegistry.set(slug, finalImageUrl);
             }
         } else if (gameData.inCombat) {
-             finalImageUrl = await generateImagenImage(`Action shot, combat, ${gameData.visual_prompt}`);
+             finalImageUrl = await generateGeminiImage(`Action shot, combat, ${gameData.visual_prompt}`);
         } else {
-            finalImageUrl = await generateImagenImage(`Cinematic scene in ${currentCity}: ${gameData.visual_prompt}`);
+            finalImageUrl = await generateGeminiImage(`Cinematic scene in ${currentCity}: ${gameData.visual_prompt}`);
         }
 
         gameData.currentCity = currentCity; 
@@ -153,11 +167,12 @@ app.post('/api/summary', async (req, res) => {
         let prompt = `Role: Database. Summarize in ${language}. Sections: OBJECTIVE, EVENTS, THREATS. Use simple words.\n\nLOG:\n`;
         history.forEach(t => prompt += `${t.role}: ${t.content}\n`);
         
+        // MODEL HARDCODED TO 2.5 FLASH
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
-        res.json({ summary: textResponse.text });
+        res.json({ summary: textResponse.text() });
     } catch (error) {
         res.status(500).json({ summary: "Data corrupted." });
     }
