@@ -32,18 +32,26 @@
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 60; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* Story Text Styling - Cleaner Font */
+        /* Story Text Styling - Screenplay Format */
         #story-log { font-family: 'Courier New', Courier, monospace; font-size: 1rem; line-height: 1.4; color: #c0c0c0; }
         
-        /* Game Over Screen */
         #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
+
+        /* PIXEL ART STATS */
+        .pixel-heart { display: inline-block; width: 10px; height: 10px; background: red; margin-right: 2px; box-shadow: 1px 1px 0 #500; }
+        .pixel-heart.empty { background: #300; box-shadow: none; }
+        .pixel-coin { display: inline-block; width: 6px; height: 10px; background: yellow; margin-right: 2px; border-radius: 1px; }
+        
+        .npc-item { font-size: 0.8rem; border: 1px solid #004400; padding: 4px; cursor: pointer; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+        .npc-item:hover { background: #002200; border-color: #00ff41; }
+        .npc-icon { width: 20px; height: 20px; background: #003300; display: flex; align-items: center; justify-content: center; font-size: 10px; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col p-2 crt-flicker gap-2">
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0">
-        <span>NEON_PROTOCOL // V.15.0</span>
+        <span>NEON_PROTOCOL // V.18.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -52,9 +60,7 @@
             <h1 class="text-4xl text-[#00ff41] tracking-widest animate-pulse">SELECT LANGUAGE</h1>
             <div class="grid grid-cols-2 gap-4 w-64 mx-auto">
                 <button onclick="selectLang('English')" class="btn-main text-center">ENGLISH</button>
-                <button onclick="selectLang('Spanish')" class="btn-main text-center">ESPAÑOL</button>
-                <button onclick="selectLang('Japanese')" class="btn-main text-center">日本語</button>
-                <button onclick="selectLang('Hindi')" class="btn-main text-center">हिंदी</button>
+                <button onclick="selectLang('Telugu')" class="btn-main text-center">తెలుగు</button>
             </div>
         </div>
     </div>
@@ -94,15 +100,30 @@
     <div id="game-ui" class="hidden flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 overflow-hidden relative z-10">
         
         <div class="panel md:col-span-3">
-            <div class="text-center border-b border-[#004400] pb-2 text-[#00ff41] font-bold">STATUS</div>
-            <div class="flex justify-between"><span>HP</span><span id="hp-val" class="text-red-500">100</span></div>
-            <div class="flex justify-between"><span>CRED</span><span id="cred-val" class="text-yellow-400">50</span></div>
-            <div class="flex justify-between text-xs text-gray-500 mt-2"><span>TURN</span><span id="turn-val">0</span></div>
+            <div class="flex flex-col gap-2 border-b border-[#004400] pb-4">
+                <div class="text-[#00ff41] text-xs font-bold">INTEGRITY</div>
+                <div id="pixel-hp" class="flex flex-wrap gap-1"></div>
+                
+                <div class="text-yellow-400 text-xs font-bold mt-2">CREDITS</div>
+                <div id="pixel-cred" class="flex flex-wrap gap-1"></div>
+            </div>
+
+            <div class="flex justify-between text-xs mt-2 border-b border-[#004400] pb-2">
+                <span>MUSIC SYSTEM:</span>
+                <span id="music-status" class="text-yellow-500">STANDBY</span>
+            </div>
+
+            <div class="flex-1 flex flex-col overflow-hidden mt-2">
+                <div class="text-[#00ff41] text-xs font-bold mb-2 uppercase tracking-wide">Known Associates</div>
+                <div id="char-list" class="flex-1 overflow-y-auto pr-1">
+                    <div class="text-gray-600 text-xs italic">No records.</div>
+                </div>
+            </div>
             
-            <div class="mt-auto flex flex-col gap-2">
-                <button id="btn-map" class="btn-main text-center text-yellow-500 border-yellow-500">TRANSIT MAP</button>
-                <button id="btn-case" class="btn-main text-center text-cyan-500 border-cyan-500">CASE FILE</button>
-                <button id="btn-suicide" class="btn-main text-center text-red-600 border-red-600 font-bold mt-4">RESET / END</button>
+            <div class="mt-auto flex flex-col gap-2 pt-2 border-t border-[#004400]">
+                <button id="btn-map" class="btn-main text-center text-yellow-500 border-yellow-500 text-xs">TRANSIT MAP</button>
+                <button id="btn-case" class="btn-main text-center text-cyan-500 border-cyan-500 text-xs">CASE FILE</button>
+                <button id="btn-suicide" class="btn-main text-center text-red-600 border-red-600 font-bold text-xs">RESET / END</button>
             </div>
         </div>
 
@@ -119,7 +140,6 @@
             </div>
 
             <div id="story-log" class="flex-1 overflow-y-auto p-2"></div>
-
             <div id="choices-area" class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#004400]"></div>
             
             <div id="puzzle-area" class="hidden flex gap-2 mt-2">
@@ -136,6 +156,16 @@
             </div>
             <div id="inv-list" class="flex-1 overflow-y-auto content-start flex flex-col gap-1 p-1"></div>
             <div id="item-info" class="h-24 border-t border-[#004400] p-2 text-xs text-gray-400 italic">Hover for info.</div>
+        </div>
+    </div>
+
+    <div id="dossier-overlay" class="overlay hidden">
+        <div class="panel w-full max-w-md border-[#00ff41]">
+            <div class="flex justify-between border-b border-[#00ff41] pb-2"><h2 class="text-xl text-[#00ff41]">SUBJECT DOSSIER</h2><button onclick="closeOverlay('dossier-overlay')" class="text-[#00ff41]">[X]</button></div>
+            <div class="p-4 flex flex-col gap-2">
+                <h3 id="dossier-name" class="text-2xl font-bold text-white uppercase"></h3>
+                <p id="dossier-desc" class="text-gray-300 font-mono text-sm leading-relaxed"></p>
+            </div>
         </div>
     </div>
 
@@ -181,19 +211,19 @@
         enemyStats: null,
         activeTab: 'weapons',
         profile: {},
-        turnCount: 0
+        knownCharacters: []
     };
 
     let selectedArch = null;
-    
-    // --- UPDATED MUSIC ENGINE ---
-    // Make sure 'EastHastings.mp3' is in the folder
     const bgm = new Audio('EastHastings.mp3');
     bgm.loop = true;
-    bgm.volume = 0.5; // Fixed volume since slider is removed
+    bgm.volume = 0.5;
     
+    // Check if music exists
     bgm.onerror = () => {
-        console.warn(">> AUDIO ERROR: 'EastHastings.mp3' not found or format not supported.");
+        const el = document.getElementById('music-status');
+        el.innerText = "MISSING FILE";
+        el.className = "text-red-500 blink";
     };
 
     function selectLang(l) {
@@ -219,17 +249,21 @@
 
         initListeners() {
             document.getElementById('start-game-btn').onclick = () => {
-                // Try to play audio on interaction
-                bgm.play().catch(e => console.log("Audio play blocked by browser:", e));
+                // MUSIC FIX: Trigger play on user interaction
+                bgm.play().then(() => {
+                    document.getElementById('music-status').innerText = "PLAYING";
+                    document.getElementById('music-status').className = "text-[#00ff41]";
+                }).catch(e => {
+                    console.log("Audio Error:", e);
+                    document.getElementById('music-status').innerText = "BLOCKED";
+                    document.getElementById('music-status').className = "text-red-500";
+                });
+                
                 this.startGame();
             };
-            
             document.getElementById('btn-suicide').onclick = () => {
-                if(confirm("TERMINATE SESSION? THIS CANNOT BE UNDONE.")) {
-                    this.turn("I choose to end it all. I pull the plug.");
-                }
+                if(confirm("TERMINATE SESSION?")) this.turn("I choose to end it all.");
             };
-            
             document.getElementById('btn-map').onclick = () => {
                 if(state.enemyStats) return; 
                 document.getElementById('map-overlay').classList.remove('hidden');
@@ -273,7 +307,48 @@
             document.getElementById('game-ui').classList.add('grid');
             
             this.renderInventory();
+            this.renderStats();
             this.turn("");
+        }
+
+        renderStats() {
+            const hpContainer = document.getElementById('pixel-hp');
+            hpContainer.innerHTML = '';
+            const hearts = Math.ceil(state.stats.hp / 10);
+            for(let i=0; i<10; i++) {
+                const h = document.createElement('div');
+                h.className = `pixel-heart ${i < hearts ? '' : 'empty'}`;
+                hpContainer.appendChild(h);
+            }
+
+            const credContainer = document.getElementById('pixel-cred');
+            credContainer.innerHTML = '';
+            const coins = Math.min(20, Math.ceil(state.stats.credits / 10));
+            for(let i=0; i<coins; i++) {
+                const c = document.createElement('div');
+                c.className = "pixel-coin";
+                credContainer.appendChild(c);
+            }
+        }
+
+        renderCharacters() {
+            const list = document.getElementById('char-list');
+            list.innerHTML = '';
+            if (state.knownCharacters.length === 0) {
+                list.innerHTML = '<div class="text-gray-600 text-xs italic">No records found.</div>';
+                return;
+            }
+            state.knownCharacters.forEach(char => {
+                const el = document.createElement('div');
+                el.className = "npc-item";
+                el.innerHTML = `<div class="npc-icon">${char.name[0]}</div><span>${char.name}</span>`;
+                el.onclick = () => {
+                    document.getElementById('dossier-name').innerText = char.name;
+                    document.getElementById('dossier-desc').innerText = char.description;
+                    document.getElementById('dossier-overlay').classList.remove('hidden');
+                };
+                list.appendChild(el);
+            });
         }
 
         async turn(action) {
@@ -292,19 +367,15 @@
                         currentCity: state.currentCity,
                         enemyStats: state.enemyStats,
                         language: state.lang,
-                        inventory: state.inventory,
-                        turnCount: state.turnCount
+                        inventory: state.inventory
                     })
                 });
 
                 const data = await res.json();
-                state.turnCount = data.turnCount;
-                document.getElementById('turn-val').innerText = state.turnCount;
                 
                 if (data.stats) {
                     state.stats = data.stats;
-                    document.getElementById('hp-val').innerText = state.stats.hp;
-                    document.getElementById('cred-val').innerText = state.stats.credits;
+                    this.renderStats();
                 }
                 
                 if (data.currentCity) {
@@ -318,6 +389,13 @@
                         if(state.inventory[i.category]) state.inventory[i.category].push(i.item);
                     });
                     this.renderInventory();
+                }
+
+                if (data.newCharacters) {
+                    data.newCharacters.forEach(nc => {
+                        if (!state.knownCharacters.some(k => k.name === nc.name)) state.knownCharacters.push(nc);
+                    });
+                    this.renderCharacters();
                 }
 
                 state.history.push({ role: 'user', content: action || "Start" });
@@ -368,7 +446,6 @@
 
         async typeText(text) {
             const el = document.getElementById('story-log');
-            // Append new entry instead of clearing for log effect
             const newEntry = document.createElement('div');
             newEntry.className = "mb-4 border-b border-[#002200] pb-2";
             el.appendChild(newEntry);
@@ -379,7 +456,7 @@
                 newEntry.innerHTML = h + '<span class="animate-pulse">_</span>';
                 await new Promise(r=>setTimeout(r, 2));
             }
-            newEntry.innerHTML = h; // remove cursor
+            newEntry.innerHTML = h;
             el.scrollTop = el.scrollHeight;
         }
 
