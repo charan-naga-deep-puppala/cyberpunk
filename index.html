@@ -15,7 +15,7 @@
         .crt-flicker { animation: flicker 0.15s infinite; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
-        .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.9); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.9); padding: 10px; display: flex; flex-direction: column; gap: 10px; }
         .btn-main { border: 1px solid #00ff41; padding: 10px; text-align: left; transition: all 0.2s; cursor: pointer; text-transform: uppercase; font-size: 1.1rem; }
         .btn-main:hover:not(:disabled) { background: #00ff41; color: black; }
         .btn-main:disabled { opacity: 0.5; cursor: not-allowed; border-color: #444; color: #444; }
@@ -33,14 +33,13 @@
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.98); z-index: 100; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* Story Text: Readable Prose Font */
+        /* Prose Font */
         #story-log { font-family: 'Georgia', serif; font-size: 1.25rem; line-height: 1.6; color: #e0e0e0; }
         
         #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
 
-        /* PIXEL ART STATS */
         .pixel-heart { display: inline-block; width: 14px; height: 14px; background: red; margin-right: 2px; box-shadow: 1px 1px 0 #500; }
-        .pixel-heart.empty { background: #300; box-shadow: none; }
+        .pixel-heart.empty { background: #330000; box-shadow: none; }
         .pixel-coin { display: inline-block; width: 8px; height: 14px; background: yellow; margin-right: 2px; border-radius: 2px; }
         
         .npc-item { font-size: 1rem; border: 1px solid #004400; padding: 8px; cursor: pointer; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
@@ -52,7 +51,7 @@
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0 relative z-50">
-        <span>NEON_PROTOCOL // V.21.0</span>
+        <span>NEON_PROTOCOL // V.22.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -229,24 +228,21 @@
     };
 
     let selectedArch = null;
-    // Audio engine - looks for file in same folder
+    // Music removed as requested
     const bgm = new Audio('EastHastings.mp3');
     bgm.loop = true;
     bgm.volume = 0.5;
     
-    // Attempt play on user interaction
+    // Unlock audio on click
     function unlockAudio() {
-        bgm.play().then(() => {
-            // Optional: Pause immediately if you don't want it playing on menu yet
-            // bgm.pause(); 
-        }).catch(e => console.log("Audio waiting for interaction"));
+        bgm.play().then(() => bgm.pause()).catch(() => {});
     }
 
     function setLanguage(lang) {
         state.lang = lang;
         document.getElementById('lang-screen').classList.add('hidden');
         document.getElementById('length-screen').classList.remove('hidden');
-        unlockAudio(); 
+        unlockAudio();
     }
 
     function setDuration(val) {
@@ -281,10 +277,9 @@
     }
 
     function initGame() {
-        // Ensure audio plays
-        if(bgm.paused) bgm.play().catch(e => console.log(e));
+        // Play Music on Start
+        bgm.play().catch(e => console.log("Audio Error:", e));
 
-        // Setup Profile
         if (selectedArch === 'RAVEN') {
             state.profile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir trenchcoat, smoking" };
             state.inventory.weapons.push("Service Revolver");
@@ -307,7 +302,6 @@
             state.unlockedCities = ["Neo-Kowloon"];
         }
 
-        // Show Game UI
         document.getElementById('char-screen').classList.add('hidden');
         document.getElementById('screen-game').classList.remove('hidden');
         document.getElementById('screen-game').classList.add('grid');
@@ -317,7 +311,6 @@
         makeTurn("");
     }
 
-    // --- GAMEPLAY FUNCTIONS ---
     async function makeTurn(action) {
         const choicesDiv = document.getElementById('choices-area');
         choicesDiv.innerHTML = '<div class="text-[#00ff41] animate-pulse col-span-2 text-xl">UPLINKING...</div>';
@@ -343,7 +336,6 @@
             const data = await res.json();
             state.turnCount = data.turnCount;
             
-            // Sync Data
             if (data.stats) { state.stats = data.stats; renderStats(); }
             
             if (data.currentCity) {
@@ -366,17 +358,13 @@
                 renderCharacters();
             }
 
-            // Update Log
             state.history.push({ role: 'user', content: action || "Start" });
             state.history.push({ role: 'model', content: data.narrative });
 
-            if (data.imageUrl) {
-                document.getElementById('img-container').innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
-            }
-
+            if (data.imageUrl) document.getElementById('img-container').innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
+            
             typeText(data.narrative);
 
-            // Combat State
             if (data.inCombat && data.enemyStats) {
                 state.enemyStats = data.enemyStats;
                 document.getElementById('enemy-hud').classList.remove('hidden');
@@ -390,7 +378,6 @@
                 document.getElementById('enemy-hud').classList.remove('flex');
             }
 
-            // Controls
             choicesDiv.innerHTML = '';
             if(data.isGameOver) {
                 document.getElementById('screen-gameover').classList.remove('hidden');
@@ -411,13 +398,11 @@
         } catch (e) { console.error(e); choicesDiv.innerText = "CONNECTION FAILURE."; }
     }
 
-    // --- UI RENDERERS ---
     async function typeText(text) {
         const el = document.getElementById('story-log');
+        // Clear previous text
+        el.innerHTML = '';
         
-        // CLEAR PREVIOUS TEXT FOR CLEANER LOOK
-        el.innerHTML = ''; 
-
         const newEntry = document.createElement('div');
         el.appendChild(newEntry);
         
@@ -425,7 +410,7 @@
         for(let c of text) {
             h += c;
             newEntry.innerHTML = h + '<span class="animate-pulse">_</span>';
-            await new Promise(r=>setTimeout(r, 10)); // Slowed down slightly for effect
+            await new Promise(r=>setTimeout(r, 10));
         }
         newEntry.innerHTML = h;
     }
@@ -534,9 +519,6 @@
         document.getElementById('puzzle-in').value = '';
         makeTurn(`Puzzle Answer: ${val}`);
     }
-
-    // Bind Start Button
-    document.getElementById('btn-start').onclick = initGame;
     </script>
 </body>
 </html>
