@@ -18,6 +18,7 @@
         .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.9); padding: 10px; display: flex; flex-direction: column; gap: 10px; }
         .btn-main { border: 1px solid #00ff41; padding: 10px; text-align: left; transition: all 0.2s; cursor: pointer; text-transform: uppercase; }
         .btn-main:hover:not(:disabled) { background: #00ff41; color: black; }
+        .btn-main:disabled { opacity: 0.5; cursor: not-allowed; border-color: #444; color: #444; }
         
         .tab-btn { flex: 1; text-align: center; border-bottom: 2px solid #004400; color: #004400; cursor: pointer; padding: 5px; }
         .tab-btn.active { border-bottom-color: #00ff41; color: #00ff41; }
@@ -42,7 +43,7 @@
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0">
-        <span>NEON_PROTOCOL // V.14.0</span>
+        <span>NEON_PROTOCOL // V.15.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -52,6 +53,8 @@
             <div class="grid grid-cols-2 gap-4 w-64 mx-auto">
                 <button onclick="selectLang('English')" class="btn-main text-center">ENGLISH</button>
                 <button onclick="selectLang('Spanish')" class="btn-main text-center">ESPAÑOL</button>
+                <button onclick="selectLang('Japanese')" class="btn-main text-center">日本語</button>
+                <button onclick="selectLang('Hindi')" class="btn-main text-center">हिंदी</button>
             </div>
         </div>
     </div>
@@ -150,6 +153,16 @@
         </div>
     </div>
 
+    <div id="help-overlay" class="overlay hidden">
+        <div class="panel w-full max-w-3xl h-3/4 border-gray-400">
+            <div class="flex justify-between border-b border-gray-400 pb-2"><h2 class="text-xl text-gray-400">DATABASE</h2><button onclick="closeOverlay('help-overlay')" class="text-gray-400">[X]</button></div>
+            <div class="grid grid-cols-3 gap-4 h-full overflow-hidden p-2">
+                <div class="col-span-1 border-r border-[#004400] flex flex-col gap-2 overflow-y-auto" id="help-topics"></div>
+                <div class="col-span-2 p-2 overflow-y-auto text-sm" id="help-content">Select a topic.</div>
+            </div>
+        </div>
+    </div>
+
     <script>
     const DB_LORE = {
         "Service Revolver": "Standard issue .45 caliber.",
@@ -173,11 +186,15 @@
 
     let selectedArch = null;
     
-    // Music Engine with Error Handling
-    const bgm = new Audio('easthastings.flac');
+    // --- UPDATED MUSIC ENGINE ---
+    // Make sure 'EastHastings.mp3' is in the folder
+    const bgm = new Audio('EastHastings.mp3');
     bgm.loop = true;
-    bgm.volume = 0.5;
-    bgm.onerror = () => console.log(">> MUSIC FILE MISSING: 'easthastings.flac' not found. Game continues silently.");
+    bgm.volume = 0.5; // Fixed volume since slider is removed
+    
+    bgm.onerror = () => {
+        console.warn(">> AUDIO ERROR: 'EastHastings.mp3' not found or format not supported.");
+    };
 
     function selectLang(l) {
         state.lang = l;
@@ -197,11 +214,13 @@
     class Game {
         constructor() {
             this.initListeners();
+            this.populateHelp();
         }
 
         initListeners() {
             document.getElementById('start-game-btn').onclick = () => {
-                bgm.play().catch(e => console.log("Audio requires interaction first."));
+                // Try to play audio on interaction
+                bgm.play().catch(e => console.log("Audio play blocked by browser:", e));
                 this.startGame();
             };
             
@@ -219,6 +238,9 @@
             document.getElementById('btn-case').onclick = () => {
                 document.getElementById('summary-overlay').classList.remove('hidden');
                 this.fetchSummary();
+            };
+            document.getElementById('btn-help').onclick = () => {
+                document.getElementById('help-overlay').classList.remove('hidden');
             };
             document.getElementById('puzzle-btn').onclick = () => {
                 const val = document.getElementById('puzzle-in').value;
@@ -346,7 +368,7 @@
 
         async typeText(text) {
             const el = document.getElementById('story-log');
-            // Don't clear history, append to it for a running log feel
+            // Append new entry instead of clearing for log effect
             const newEntry = document.createElement('div');
             newEntry.className = "mb-4 border-b border-[#002200] pb-2";
             el.appendChild(newEntry);
@@ -371,7 +393,7 @@
                 div.className = 'inv-item';
                 div.innerText = item;
                 div.onmouseenter = () => {
-                    const desc = DB_LORE[item] || "No data available.";
+                    const desc = DB_LORE[item] || "No data available in database.";
                     document.getElementById('item-info').innerText = desc;
                 };
                 list.appendChild(div);
@@ -412,6 +434,19 @@
                 const data = await res.json();
                 el.innerText = data.summary;
             } catch(e) { el.innerText = "ERROR."; }
+        }
+
+        populateHelp() {
+            const topics = Object.keys(DB_LORE);
+            const list = document.getElementById('help-topics');
+            list.innerHTML = '';
+            topics.forEach(t => {
+                const d = document.createElement('div');
+                d.className = "p-1 cursor-pointer hover:bg-[#00ff41] hover:text-black text-xs";
+                d.innerText = t;
+                d.onclick = () => document.getElementById('help-content').innerText = DB_LORE[t];
+                list.appendChild(d);
+            });
         }
     }
 
