@@ -10,9 +10,13 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Initialize Gemini for TEXT only
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// --- WORLD DATA ---
+// --- DEEPAI CONFIGURATION ---
+const DEEPAI_API_KEY = process.env.DEEPAI_API_KEY;
+const STYLE_SUFFIX = ", extremely grainy, high ISO noise, blurry, motion blur, dystopian, analog horror style, low resolution, silhouette, face hidden, cinematic, atmospheric, gloom, cctv footage style";
+
 const CITIES = {
     "Neo-Kowloon": "Rain. Neon. Noodle stands. Concrete.",
     "The Scrapyard": "Rust. Fire. Metal crushers.",
@@ -24,7 +28,6 @@ const CITIES = {
     "Gargantus Space": "Void. Stars. Impossible shapes."
 };
 
-// --- SYSTEM PROMPT ---
 const SYSTEM_INSTRUCTION = `
 You are the Game Master of a Sci-Fi RPG.
 
@@ -33,18 +36,19 @@ You are the Game Master of a Sci-Fi RPG.
 2. **Never use a long word where a short one will do.**
 3. **If it is possible to cut a word out, always cut it out.**
 4. **Never use the passive where you can use the active.**
-5. **Use everyday English.**
-6. **NO SOUND EFFECTS.**
-7. **FORMAT:** Write in clear paragraphs.
+5. **Use everyday English** (Scientific terms allowed only if necessary).
+6. **NO SOUND EFFECTS** (Do not write *click*, *bang*, etc).
+7. **FORMAT:** Write in clear paragraphs. No screenplay format.
 
 ### STRUCTURE:
-- **Turn 1 (Intro):** Detailed, atmospheric, establish lore.
-- **Turns 2+:** Short. Punchy. Action/Reaction.
+- **INTRODUCTION (Turn 1):** Detailed, atmospheric, establish the lore.
+- **TURNS 2+:** Short. Punchy. Action and reaction.
+- **PERSPECTIVE:** Second person ("You see...", "You do...").
 
 ### MECHANICS:
-1. **COMBAT:** Headshots/Core hits are fatal. Player death = "isGameOver": true.
-2. **LOOTING:** - If player *sees* items but hasn't taken them: List in "availableItems".
-   - If player *takes* an item (e.g. "I take the gun"): List in "inventoryUpdates" -> "add".
+1. **COMBAT:** Headshots or Core hits are fatal. Player death = "isGameOver": true.
+2. **LOOTING:** - If player sees items but hasn't taken them, list in "availableItems".
+   - If player takes items, put them in "inventoryUpdates" ("add").
 3. **CHARACTERS:** If a NEW NPC appears, add to "newCharacters".
 4. **LANGUAGE:** Respond ONLY in [LANGUAGE].
 
@@ -65,36 +69,35 @@ JSON FORMAT:
 }
 `;
 
-// --- HELPER: ROBUST TEXT EXTRACTION ---
-// This fixes the "text is not a function" error
-function extractText(response) {
-    if (typeof response.text === 'function') {
-        return response.text();
-    } else if (typeof response.text === 'string') {
-        return response.text;
-    } else if (response.candidates && response.candidates[0].content.parts[0].text) {
-        return response.candidates[0].content.parts[0].text;
-    }
-    return "{}"; // Return empty JSON object string if failure
-}
-
-// --- IMAGE GENERATION ---
-async function generateGeminiImage(prompt) {
+// --- DEEPAI IMAGE GENERATION ---
+async function generateDeepAIImage(prompt) {
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-image", 
-            contents: "Create a cyberpunk noir style illustration, cinematic lighting, grainy image: " + prompt,
-        });
+        console.log(">> Generating Image with DeepAI...");
         
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            }
+        // Native fetch (Node 18+)
+        const resp = await fetch('https://api.deepai.org/api/text2img', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': DEEPAI_API_KEY
+            },
+            body: JSON.stringify({
+                text: prompt + STYLE_SUFFIX,
+            })
+        });
+
+        const data = await resp.json();
+        
+        if (data.output_url) {
+            return data.output_url;
+        } else {
+            console.error("DeepAI Error:", data);
+            return "https://placehold.co/600x400/000000/00ff41?text=SIGNAL+LOST";
         }
-        return null;
+
     } catch (error) {
         console.error("Image Gen Error:", error.message);
-        return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+DATA+CORRUPT";
+        return "https://placehold.co/600x400/000000/00ff41?text=CONNECTION+FAILURE";
     }
 }
 
@@ -136,34 +139,46 @@ app.post('/api/turn', async (req, res) => {
         history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
+        // Text Generation (Gemini)
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
 
-        // USE NEW EXTRACTOR
-        const rawText = extractText(textResponse);
-        const gameData = JSON.parse(rawText);
+        // Robust JSON Parsing
+        let gameData;
+        const rawText = textResponse.response ? textResponse.response.text() : textResponse.text(); // Handle updated SDK return types
+        try {
+            gameData = JSON.parse(rawText);
+        } catch (e) {
+            // Fallback if AI creates bad JSON
+            gameData = { narrative: "Data stream corrupted.", choices: ["Retry"], stats: currentStats };
+        }
 
-        // Forced Ending
+        // Check for Forced Ending
         if (turnCount >= maxTurns && !gameData.isGameOver) {
             gameData.narrative += "\n\n[SYSTEM]: SIMULATION LIMIT REACHED. NARRATIVE CONCLUDED.";
             gameData.isGameOver = true;
         }
 
-        // Image Logic
+        // Image Logic (DeepAI)
         let finalImageUrl = "";
         const isFirstTurn = history.length === 0;
 
         if (isFirstTurn) {
-            finalImageUrl = await generateGeminiImage(`Pixel art portrait of ${playerProfile.name}, ${playerProfile.style}, 8-bit style, green monochrome background`);
+            finalImageUrl = await generateDeepAIImage(`Silhouette of ${playerProfile.name} in ${currentCity}`);
         } else if (gameData.enemyName) {
-            finalImageUrl = await generateGeminiImage("Character portrait of " + gameData.visual_prompt);
+            finalImageUrl = await generateDeepAIImage("Shadowy figure, " + gameData.visual_prompt);
         } else if (gameData.inCombat) {
-             finalImageUrl = await generateGeminiImage(`Action shot, combat, ${gameData.visual_prompt}`);
+             finalImageUrl = await generateDeepAIImage(`Blurred action shot, violence, ${gameData.visual_prompt}`);
         } else {
-            finalImageUrl = await generateGeminiImage(`Cinematic scene in ${currentCity}: ${gameData.visual_prompt}`);
+            // 50% chance to show the Cityscape instead of specific action for atmosphere
+            if (Math.random() > 0.5) {
+                finalImageUrl = await generateDeepAIImage(`Wide shot of ${currentCity}, dystopia, ${gameData.visual_prompt}`);
+            } else {
+                finalImageUrl = await generateDeepAIImage(`Cinematic scene, ${gameData.visual_prompt}`);
+            }
         }
 
         gameData.currentCity = currentCity; 
@@ -189,13 +204,10 @@ app.post('/api/summary', async (req, res) => {
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
-        
-        // USE NEW EXTRACTOR
-        const summaryText = extractText(textResponse);
+        const summaryText = textResponse.response ? textResponse.response.text() : textResponse.text();
         res.json({ summary: summaryText });
-
     } catch (error) {
-        console.error("Summary Error:", error);
+        console.error(error);
         res.status(500).json({ summary: "Data corrupted." });
     }
 });
