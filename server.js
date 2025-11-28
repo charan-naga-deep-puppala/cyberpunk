@@ -15,32 +15,30 @@ const enemyRegistry = new Map();
 
 // --- WORLD DATA ---
 const CITIES = {
-    "Neo-Kowloon": "Classic Cyberpunk. Rain, neon, noodle stands. The Police Station is here.",
-    "The Scrapyard": "Industrial hellscape. Burning metal, recycling compactors, hydraulic presses.",
-    "Solaris District": "Psychological horror sector. Hallucinations, living liquid architecture.",
-    "Magrathea Heights": "Ultra-luxury planet-builder factory. Gold-plated robots, artificial sunsets.",
-    "Trantor Deep": "City-planet covered in metal layers. Endless bureaucracy, pipes, steam.",
-    "The Zone": "An anomaly area. Physics glitch here. Rust, overgrown nature, invisible traps.",
-    "Ubik Reality": "Retro-futuristic suburb that constantly decays and regresses in time."
+    "Neo-Kowloon": "Classic Cyberpunk. Rain, neon, noodle stands.",
+    "The Scrapyard": "Industrial hellscape. Burning metal, robot graveyard.",
+    "Solaris District": "Psychological horror. Hallucinations, living liquid architecture.",
+    "Magrathea Heights": "Ultra-luxury factory. Artificial sunsets.",
+    "Trantor Deep": "City-planet covered in metal. Endless bureaucracy.",
+    "The Zone": "Anomaly area. Physics glitch. Rust and nature.",
+    "Ubik Reality": "Retro-futuristic suburb that constantly decays."
 };
 
-// --- GAME MASTER PERSONA ---
 const SYSTEM_INSTRUCTION = `
 You are the Game Master of a high-stakes Sci-Fi RPG.
 
-### MECHANICS:
-1. **COMBAT SYSTEM (REPLACES PUZZLES):**
-   - If a fight starts, set "inCombat": true.
-   - Define "enemyStats": { "name": "Enemy Name", "hp": 50, "maxHp": 50 }.
-   - If "inCombat" is already true:
-     - Calculate Player Damage (based on class/weapons). Reduce Enemy HP.
-     - Calculate Enemy Damage (based on enemy type). Reduce Player HP in "stats".
-     - Narrate the exchange (e.g., "You fire your pistol (12 dmg). The bot claws you (8 dmg).")
-   - If Enemy HP <= 0, set "inCombat": false and describe the victory/loot.
-   
-2. **LOCATION:** Use [CURRENT_CITY] vibe.
-3. **TRAVEL:** Describe transit between cities.
-4. **CASE SOLVING:** If mystery solved, set "caseSolved": true.
+### SETTINGS:
+1. **LANGUAGE:** Reply in [LANGUAGE].
+2. **CONTEXT:** Player is [ARCHETYPE] named [NAME] in [CITY].
+
+### INVENTORY MECHANIC:
+- The inventory is split into: **WEAPONS**, **MEMORIES** (Clues/Flashbacks), and **ITEMS** (Tools).
+- You can add/remove items based on the story.
+- Example: "inventoryUpdates": { "add": {"category": "memories", "item": "Corrupted Data Chip"}, "remove": {"category": "items", "item": "Health Pack"} }
+
+### COMBAT & PUZZLES:
+- If fight starts: "inCombat": true, "enemyStats": {...}.
+- If hacked: "uiLocked": true, "puzzleQuestion": "...".
 
 JSON FORMAT:
 {
@@ -49,19 +47,19 @@ JSON FORMAT:
   "enemyName": "String or null",
   "inCombat": boolean,
   "enemyStats": { "name": "String", "hp": number, "maxHp": number } OR null,
-  "choices": ["Attack", "Defend", "Item"], 
+  "choices": ["Opt1", "Opt2"], 
   "caseSolved": boolean,
-  "stats": { "hp": 100, "credits": 50, "inventory": [] },
+  "stats": { "hp": 100, "credits": 50 },
+  "inventoryUpdates": { "add": [], "remove": [] } OR null,
   "isGameOver": boolean
 }
 `;
 
-// --- HELPER: GENERATE IMAGE ---
 async function generateImagenImage(prompt) {
     try {
         const response = await ai.models.generateImages({
             model: 'imagen-3.0-generate-001', 
-            prompt: "Cyberpunk sci-fi style, cinematic lighting. " + prompt,
+            prompt: "Cyberpunk sci-fi style, cinematic. " + prompt,
             config: { numberOfImages: 1, aspectRatio: "16:9" },
         });
         const imgBytes = response.generatedImages[0].image.imageBytes;
@@ -72,19 +70,18 @@ async function generateImagenImage(prompt) {
     }
 }
 
-// --- MAIN TURN ENDPOINT ---
 app.post('/api/turn', async (req, res) => {
     try {
-        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats } = req.body;
+        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory } = req.body;
         
-        // --- ORIGIN STORY (First Turn) ---
+        // Origin Story Logic
         if (history.length === 0) {
             if (playerProfile.archetype === "RAVEN") {
                 currentCity = "Neo-Kowloon";
-                userAction = "I am Raven. Sitting in my office at the Precinct. Reviewing the files on the new murder case.";
+                userAction = "I am Raven. Sitting in my office. Reviewing the murder case files.";
             } else if (playerProfile.archetype === "I-6") {
                 currentCity = "The Scrapyard";
-                userAction = "I am Unit I-6. Systems online. I am on a conveyor belt to the furnace. I must escape.";
+                userAction = "I am Unit I-6. Systems online. Conveyor belt to furnace. I must escape.";
             } else {
                 currentCity = "Neo-Kowloon";
                 userAction = `I am ${playerProfile.name}, a ${playerProfile.class}. ${playerProfile.backstory}`;
@@ -92,31 +89,29 @@ app.post('/api/turn', async (req, res) => {
         }
 
         const cityVibe = CITIES[currentCity] || "Cyberpunk City";
-        console.log(`Action: ${userAction.substring(0,20)}... | Combat: ${!!enemyStats}`);
+        console.log(`Action: ${userAction.substring(0,20)}...`);
 
-        // 1. GENERATE STORY
-        let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n\n`;
+        let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n`;
+        fullPrompt += `LANGUAGE: ${language || 'English'}\n`;
         fullPrompt += `PLAYER: ${playerProfile?.name} (${playerProfile?.class})\n`;
         fullPrompt += `LOC: ${currentCity} (${cityVibe})\n`;
         fullPrompt += `STATUS: HP=${currentStats.hp}\n`;
+        fullPrompt += `CURRENT INVENTORY: ${JSON.stringify(inventory)}\n`;
+        if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
-        if (enemyStats) {
-            fullPrompt += `CURRENT ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp}/${enemyStats.maxHp})\n`;
-        }
-
         fullPrompt += `HISTORY:\n`;
         history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
+            model: 'gemini-1.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
 
         const gameData = JSON.parse(textResponse.text);
 
-        // 2. GENERATE IMAGE
+        // Image Generation
         let finalImageUrl = "";
         const isFirstTurn = history.length === 0;
 
@@ -147,6 +142,20 @@ app.post('/api/turn', async (req, res) => {
     }
 });
 
+app.post('/api/summary', async (req, res) => {
+    try {
+        const { history, language } = req.body;
+        let prompt = `Summarize story in ${language}. Sections: OBJECTIVE, EVENTS, THREATS.\n\nLOG:\n`;
+        history.forEach(t => prompt += `${t.role}: ${t.content}\n`);
+        const textResponse = await ai.models.generateContent({
+            model: 'gemini-1.5-flash', 
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        });
+        res.json({ summary: textResponse.text });
+    } catch (error) {
+        res.status(500).json({ summary: "Data corrupted." });
+    }
+});
+
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.listen(port, () => console.log(`Server running on port ${port}`));
-
