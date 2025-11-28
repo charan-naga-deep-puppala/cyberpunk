@@ -95,7 +95,7 @@ app.post('/api/turn', async (req, res) => {
         fullPrompt += `PLAYER: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-1.5-flash', 
+            model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
@@ -145,3 +145,4 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
     console.log(`GenAI Server running on http://localhost:${port}`);
 });
+
