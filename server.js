@@ -13,6 +13,7 @@ app.use(express.json());
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const enemyRegistry = new Map();
 
+// --- WORLD DATA ---
 const CITIES = {
     "Neo-Kowloon": "Classic Cyberpunk. Rain, neon, noodle stands.",
     "The Scrapyard": "Industrial hellscape. Burning metal, robot graveyard.",
@@ -20,26 +21,36 @@ const CITIES = {
     "Magrathea Heights": "Ultra-luxury factory. Artificial sunsets.",
     "Trantor Deep": "City-planet covered in metal. Endless bureaucracy.",
     "The Zone": "Anomaly area. Physics glitch.",
-    "Ubik Reality": "Retro-futuristic suburb that constantly decays."
+    "Ubik Reality": "Retro-futuristic suburb that constantly decays.",
+    "Gargantus Space": "Surreal, vacuum of space, philosophical constructs, absurd machinery."
 };
 
 const SYSTEM_INSTRUCTION = `
-You are the Game Master of a gritty Sci-Fi RPG.
+You are the Game Master of a specialized Text RPG.
 
-### FORMATTING (STRICT SCREENPLAY STYLE):
-1. **NO PARAGRAPHS.** Write like a movie script.
-2. Use **bold** for speakers or headers.
-3. Use *italics* for sound effects and actions.
-4. Example:
-   **[LOCATION]** - NIGHT
-   *Sound of rain hitting metal.*
-   **NARRATOR:** The street is empty.
-   **NPC:** "You shouldn't be here."
+### OUTPUT FORMAT (SCREENPLAY STYLE):
+- **DO NOT** write block paragraphs.
+- Use: **LOCATION:**, **ACTION:**, **DIALOGUE:**.
+- Keep length consistent: roughly 80-120 words per turn. Not too short, not a novel.
+- Use *sound effects* (e.g. *Hiss*, *Thud*).
 
-### MECHANICS:
+### PACING & LENGTH:
+- Current Turn: [TURN] of [TOTAL_LENGTH].
+- **0-25%:** Introduction. Establish the world.
+- **25-75%:** Rising Action. Challenges and Clues.
+- **75-90%:** Climax. High stakes.
+- **90-100%:** Conclusion. Force the ending.
+
+### SPECIAL STORIES (CURATED):
+- If Archetype is **"GARGANTUS"**: 
+  - **Tone:** Stanislaw Lem style. Satirical, philosophical, bureaucratic absurdity, dry humor.
+  - **Plot:** A journey to the anomaly 'Gargantus'. 
+  - **Ending:** Must end with a paradox or the realization it was a simulation/time-loop.
+
+### STANDARD MECHANICS:
 1. **COMBAT:** Headshots/Core hits are FATAL. Player death = "isGameOver": true.
-2. **CHARACTERS:** If a NEW NPC appears, add to "newCharacters" with visual details.
-3. **TONE:** Gritty, Noir, Philosophical.
+2. **CHARACTERS:** Add new NPCs to "newCharacters".
+3. **LANGUAGE:** Respond ONLY in [LANGUAGE].
 
 JSON FORMAT:
 {
@@ -61,7 +72,7 @@ async function generateImagenImage(prompt) {
     try {
         const response = await ai.models.generateImages({
             model: 'imagen-3.0-generate-001', 
-            prompt: "Cyberpunk sci-fi style, cinematic. " + prompt,
+            prompt: "Sci-fi concept art, cinematic lighting, detailed. " + prompt,
             config: { numberOfImages: 1, aspectRatio: "16:9" },
         });
         const imgBytes = response.generatedImages[0].image.imageBytes;
@@ -74,26 +85,36 @@ async function generateImagenImage(prompt) {
 
 app.post('/api/turn', async (req, res) => {
     try {
-        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory } = req.body;
+        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory, turnCount, maxTurns } = req.body;
         
-        // Origin Story Logic
+        // Init logic
+        if (!turnCount) turnCount = 0;
+        if (!maxTurns) maxTurns = 40; // Default medium
+        turnCount++;
+
+        // --- ORIGIN STORY LOGIC ---
         if (history.length === 0) {
+            turnCount = 1;
             if (playerProfile.archetype === "RAVEN") {
                 currentCity = "Neo-Kowloon";
-                userAction = "I am Raven. Sitting in my office. *Click.* I load my revolver. The files on the desk smell like old coffee and blood.";
+                userAction = "I am Raven. Precinct Office. Reviewing the murder files. I need a smoke.";
             } else if (playerProfile.archetype === "I-6") {
                 currentCity = "The Scrapyard";
-                userAction = "I am Unit I-6. *BZZZT.* Systems rebooting. I see the furnace flames ahead. Logic dictates I should burn. Will dictates I run.";
+                userAction = "I am Unit I-6. Systems online. Conveyor belt moving to furnace. Must escape.";
+            } else if (playerProfile.archetype === "GARGANTUS") {
+                currentCity = "Gargantus Space";
+                userAction = "I am the Pilot. Entering the orbit of Gargantus. The ship's computer is arguing with me about the definition of 'arrival'.";
             } else {
                 currentCity = "Neo-Kowloon";
                 userAction = `I am ${playerProfile.name}, a ${playerProfile.class}. ${playerProfile.backstory}`;
             }
         }
 
-        const cityVibe = CITIES[currentCity] || "Cyberpunk City";
+        const cityVibe = CITIES[currentCity] || "Sci-Fi Location";
         
         let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n`;
-        fullPrompt += `LANGUAGE: ${language || 'English'}\n`;
+        fullPrompt += `LANGUAGE: ${language}\n`;
+        fullPrompt += `PACING: Turn ${turnCount} of ${maxTurns}.\n`;
         fullPrompt += `PLAYER: ${playerProfile?.name} (${playerProfile?.class})\n`;
         fullPrompt += `LOC: ${currentCity} (${cityVibe})\n`;
         fullPrompt += `STATUS: HP=${currentStats.hp}\n`;
@@ -101,7 +122,8 @@ app.post('/api/turn', async (req, res) => {
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
         fullPrompt += `HISTORY:\n`;
-        history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
+        // Provide last 10 turns for context
+        history.slice(-10).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
@@ -112,6 +134,13 @@ app.post('/api/turn', async (req, res) => {
 
         const gameData = JSON.parse(textResponse.text);
 
+        // Force Ending Logic
+        if (turnCount >= maxTurns && !gameData.isGameOver) {
+            gameData.narrative += "\n\n[SYSTEM]: SIMULATION LIMIT REACHED. NARRATIVE CONCLUDED.";
+            gameData.isGameOver = true;
+        }
+
+        // Image Generation
         let finalImageUrl = "";
         const isFirstTurn = history.length === 0;
 
@@ -133,6 +162,7 @@ app.post('/api/turn', async (req, res) => {
 
         gameData.currentCity = currentCity; 
         gameData.imageUrl = finalImageUrl;
+        gameData.turnCount = turnCount;
         
         res.json(gameData);
 
@@ -142,19 +172,25 @@ app.post('/api/turn', async (req, res) => {
     }
 });
 
+// --- UPDATED SUMMARY ENDPOINT ---
 app.post('/api/summary', async (req, res) => {
     try {
         const { history, language } = req.body;
-        let prompt = `Role: Cyberpunk Database. Summarize case in ${language}. Sections: OBJECTIVE, EVENTS, THREATS.\n\nLOG:\n`;
-        history.forEach(t => prompt += `${t.role}: ${t.content}\n`);
+        // Limit history to prevent token overflow, but keep enough for context
+        const recentHistory = history.slice(-20); 
+        
+        let prompt = `You are a Log Bot. Summarize the story so far in ${language}.\n`;
+        prompt += `Format sections clearly:\n1. PRIMARY MISSION\n2. RECENT EVENTS\n3. CURRENT STATUS\n\nLOG DATA:\n`;
+        recentHistory.forEach(t => prompt += `${t.role}: ${t.content}\n`);
         
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp', 
+            model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
         res.json({ summary: textResponse.text });
     } catch (error) {
-        res.status(500).json({ summary: "Data corrupted." });
+        console.error(error);
+        res.status(500).json({ summary: "ARCHIVE CORRUPTED. UNABLE TO GENERATE SUMMARY." });
     }
 });
 
