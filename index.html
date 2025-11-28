@@ -34,13 +34,18 @@
         /* OVERLAYS */
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.95); z-index: 60; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
+
+        /* SLIDER STYLE */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; background: #00ff41; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #004400; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col p-2 crt-flicker gap-2">
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0">
-        <span>NEON_PROTOCOL // V.12.0</span>
+        <span>NEON_PROTOCOL // V.13.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -62,11 +67,11 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 <div class="char-card" onclick="selectChar('RAVEN', this)">
                     <h2 class="text-2xl font-bold">RAVEN</h2>
-                    <p class="text-sm text-gray-400">Detective. Start: Neo-Kowloon.</p>
+                    <p class="text-sm text-gray-400">Detective. Start: Neo-Kowloon. Weakness: Human.</p>
                 </div>
                 <div class="char-card" onclick="selectChar('I-6', this)">
                     <h2 class="text-2xl font-bold">UNIT I-6</h2>
-                    <p class="text-sm text-gray-400">Rogue AI. Start: Scrapyard.</p>
+                    <p class="text-sm text-gray-400">Rogue AI. Start: Scrapyard. Weakness: Power Core.</p>
                 </div>
                 <div class="char-card" onclick="selectChar('CUSTOM', this)">
                     <h2 class="text-2xl font-bold">THE ANOMALY</h2>
@@ -89,10 +94,15 @@
             <div class="flex justify-between"><span>HP</span><span id="hp-val" class="text-red-500">100</span></div>
             <div class="flex justify-between"><span>CRED</span><span id="cred-val" class="text-yellow-400">50</span></div>
             
+            <div class="mt-4 border-t border-[#004400] pt-2">
+                <div class="text-xs mb-1">AUDIO GAIN</div>
+                <input type="range" id="vol-control" min="0" max="1" step="0.1" value="0.5">
+            </div>
+
             <div class="mt-auto flex flex-col gap-2">
                 <button id="btn-map" class="btn-main text-center text-yellow-500 border-yellow-500">TRANSIT MAP</button>
                 <button id="btn-case" class="btn-main text-center text-cyan-500 border-cyan-500">CASE FILE</button>
-                <button id="btn-help" class="btn-main text-center text-gray-400 border-gray-400">DATABASE / HELP</button>
+                <button id="btn-help" class="btn-main text-center text-gray-400 border-gray-400">DATABASE</button>
             </div>
         </div>
 
@@ -124,64 +134,43 @@
                 <div class="tab-btn" onclick="switchTab('items')">ITEMS</div>
                 <div class="tab-btn" onclick="switchTab('memories')">MEMORIES</div>
             </div>
-            <div id="inv-list" class="flex-1 overflow-y-auto content-start flex flex-col gap-1 p-1">
-                </div>
-            <div id="item-info" class="h-24 border-t border-[#004400] p-2 text-xs text-gray-400 italic">
-                Hover over an item or consult Database for details.
-            </div>
+            <div id="inv-list" class="flex-1 overflow-y-auto content-start flex flex-col gap-1 p-1"></div>
+            <div id="item-info" class="h-24 border-t border-[#004400] p-2 text-xs text-gray-400 italic">Hover for info.</div>
         </div>
     </div>
 
     <div id="map-overlay" class="overlay hidden">
         <div class="panel w-full max-w-2xl h-3/4">
-            <div class="flex justify-between border-b border-[#00ff41] pb-2">
-                <h2 class="text-xl">TRANSIT NETWORK</h2>
-                <button onclick="closeOverlay('map-overlay')" class="text-red-500">[X]</button>
-            </div>
+            <div class="flex justify-between border-b border-[#00ff41] pb-2"><h2 class="text-xl">TRANSIT</h2><button onclick="closeOverlay('map-overlay')" class="text-red-500">[X]</button></div>
             <div id="city-list" class="flex flex-col gap-2 overflow-y-auto p-4"></div>
         </div>
     </div>
 
     <div id="summary-overlay" class="overlay hidden">
         <div class="panel w-full max-w-3xl h-3/4 border-cyan-500">
-            <div class="flex justify-between border-b border-cyan-500 pb-2">
-                <h2 class="text-xl text-cyan-500">CASE FILE</h2>
-                <button onclick="closeOverlay('summary-overlay')" class="text-cyan-500">[X]</button>
-            </div>
+            <div class="flex justify-between border-b border-cyan-500 pb-2"><h2 class="text-xl text-cyan-500">CASE FILE</h2><button onclick="closeOverlay('summary-overlay')" class="text-cyan-500">[X]</button></div>
             <div id="summary-text" class="whitespace-pre-wrap text-cyan-400 p-4 overflow-y-auto">LOADING...</div>
         </div>
     </div>
 
     <div id="help-overlay" class="overlay hidden">
         <div class="panel w-full max-w-3xl h-3/4 border-gray-400">
-            <div class="flex justify-between border-b border-gray-400 pb-2">
-                <h2 class="text-xl text-gray-400">DATABASE</h2>
-                <button onclick="closeOverlay('help-overlay')" class="text-gray-400">[X]</button>
-            </div>
+            <div class="flex justify-between border-b border-gray-400 pb-2"><h2 class="text-xl text-gray-400">DATABASE</h2><button onclick="closeOverlay('help-overlay')" class="text-gray-400">[X]</button></div>
             <div class="grid grid-cols-3 gap-4 h-full overflow-hidden p-2">
-                <div class="col-span-1 border-r border-[#004400] flex flex-col gap-2 overflow-y-auto" id="help-topics">
-                    </div>
-                <div class="col-span-2 p-2 overflow-y-auto text-sm" id="help-content">
-                    Select a topic to read entry.
-                </div>
+                <div class="col-span-1 border-r border-[#004400] flex flex-col gap-2 overflow-y-auto" id="help-topics"></div>
+                <div class="col-span-2 p-2 overflow-y-auto text-sm" id="help-content">Select a topic.</div>
             </div>
         </div>
     </div>
 
     <script>
-    // --- STATIC DATA ---
     const DB_LORE = {
-        "Service Revolver": "Standard issue .45 caliber. Reliable, kinetic, messy.",
-        "Arc Welder": "Modified industrial tool. Delivers 50,000 volts at short range.",
-        "Datapad": "Standard handheld computer. Essential for reading shards.",
-        "Health Stick": "Injectable nano-gel. Clots wounds instantly.",
-        "Victim's Face": "Memory: The frozen expression of the body found in sector 4.",
-        "Awakening Code": "Memory: The string of numbers that granted you sentience.",
-        "Neo-Kowloon": "The oldest sector. Dense, rainy, and ruled by Triads.",
-        "Combat": "Turn-based. Damage is calculated based on weapon stats and RNG."
+        "Service Revolver": "Standard issue .45 caliber.",
+        "Arc Welder": "Modified industrial tool. 50kV.",
+        "Neo-Kowloon": "Oldest sector. Dense, rainy.",
+        "Combat": "Attacking Vital Points (Head/Core) can cause Instant Death."
     };
 
-    // --- STATE ---
     let state = {
         lang: 'English',
         history: [],
@@ -195,13 +184,22 @@
     };
 
     let selectedArch = null;
+    
+    // --- MUSIC ENGINE ---
+    // Will look for easthastings.flac in the same folder
+    const bgm = new Audio('easthastings.flac');
+    bgm.loop = true;
+    bgm.volume = 0.5;
+    
+    bgm.onerror = () => {
+        console.warn(">> AUDIO ERROR: 'easthastings.flac' not found or format not supported.");
+    };
 
-    // --- INIT ---
     function selectLang(l) {
         state.lang = l;
         document.getElementById('lang-screen').classList.add('hidden');
         document.getElementById('char-screen').classList.remove('hidden');
-        document.getElementById('char-screen').classList.add('flex'); // Enable flex layout
+        document.getElementById('char-screen').classList.add('flex');
     }
 
     function selectChar(type, el) {
@@ -212,7 +210,6 @@
         document.getElementById('start-game-btn').disabled = false;
     }
 
-    // --- GAME ENGINE ---
     class Game {
         constructor() {
             this.initListeners();
@@ -220,9 +217,17 @@
         }
 
         initListeners() {
-            document.getElementById('start-game-btn').onclick = () => this.startGame();
+            document.getElementById('start-game-btn').onclick = () => {
+                // Attempt to play music on user interaction
+                bgm.play().catch(e => console.log("Audio Autoplay Blocked", e));
+                this.startGame();
+            };
             
-            // Nav Buttons
+            // Volume Slider
+            document.getElementById('vol-control').addEventListener('input', (e) => {
+                bgm.volume = parseFloat(e.target.value);
+            });
+
             document.getElementById('btn-map').onclick = () => {
                 if(state.enemyStats) return; 
                 document.getElementById('map-overlay').classList.remove('hidden');
@@ -235,8 +240,6 @@
             document.getElementById('btn-help').onclick = () => {
                 document.getElementById('help-overlay').classList.remove('hidden');
             };
-
-            // Puzzle
             document.getElementById('puzzle-btn').onclick = () => {
                 const val = document.getElementById('puzzle-in').value;
                 document.getElementById('puzzle-in').value = '';
@@ -245,7 +248,6 @@
         }
 
         startGame() {
-            // Set Initial Inventory based on Class
             if (selectedArch === 'RAVEN') {
                 state.profile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir" };
                 state.inventory.weapons.push("Service Revolver");
@@ -268,15 +270,8 @@
             document.getElementById('game-ui').classList.remove('hidden');
             document.getElementById('game-ui').classList.add('grid');
             
-            this.startSound();
             this.renderInventory();
             this.turn("");
-        }
-
-        async startSound() {
-            await Tone.start();
-            const synth = new Tone.PolySynth().toDestination();
-            synth.triggerAttackRelease(["C2", "G2"], "4n");
         }
 
         async turn(action) {
@@ -301,7 +296,6 @@
 
                 const data = await res.json();
                 
-                // Update Logic
                 if (data.stats) {
                     state.stats = data.stats;
                     document.getElementById('hp-val').innerText = state.stats.hp;
@@ -314,29 +308,22 @@
                     document.getElementById('current-loc-display').innerText = `LOC: ${state.currentCity.toUpperCase()}`;
                 }
 
-                // Inventory Updates from Server
-                if (data.inventoryUpdates) {
-                    if(data.inventoryUpdates.add) {
-                        data.inventoryUpdates.add.forEach(i => {
-                            if(state.inventory[i.category]) state.inventory[i.category].push(i.item);
-                        });
-                    }
-                    // Implement remove logic if needed
+                if (data.inventoryUpdates && data.inventoryUpdates.add) {
+                    data.inventoryUpdates.add.forEach(i => {
+                        if(state.inventory[i.category]) state.inventory[i.category].push(i.item);
+                    });
                     this.renderInventory();
                 }
 
                 state.history.push({ role: 'user', content: action || "Start" });
                 state.history.push({ role: 'model', content: data.narrative });
 
-                // Render Visuals
                 if (data.imageUrl) {
                     document.getElementById('img-container').innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
                 }
 
-                // Render Text
                 this.typeText(data.narrative);
 
-                // Combat
                 if (data.inCombat && data.enemyStats) {
                     state.enemyStats = data.enemyStats;
                     document.getElementById('enemy-hud').classList.remove('hidden');
@@ -350,7 +337,6 @@
                     document.getElementById('enemy-hud').classList.remove('flex');
                 }
 
-                // Choices / Puzzle
                 choicesDiv.innerHTML = '';
                 if(data.isGameOver) {
                     choicesDiv.innerHTML = `<button onclick="location.reload()" class="btn-main text-red-500 border-red-500 col-span-2">FLATLINED // REBOOT</button>`;
@@ -415,10 +401,8 @@
                 const div = document.createElement('div');
                 const isUnlocked = state.unlockedCities.includes(city);
                 const isCurrent = state.currentCity === city;
-                
                 div.className = `p-2 border mb-2 flex justify-between ${isCurrent ? 'bg-[#00ff41] text-black border-[#00ff41]' : (isUnlocked ? 'border-[#00ff41] hover:bg-[#002200] cursor-pointer' : 'border-[#330000] text-gray-600 opacity-50 cursor-not-allowed')}`;
                 div.innerHTML = `<span>${city.toUpperCase()}</span><span>${isCurrent ? 'CURRENT' : (isUnlocked ? 'GO >>' : 'LOCKED')}</span>`;
-                
                 if(isUnlocked && !isCurrent) {
                     div.onclick = () => {
                         closeOverlay('map-overlay');
@@ -457,14 +441,10 @@
         }
     }
 
-    // --- GLOBAL HELPERS ---
     function switchTab(t) {
         state.activeTab = t;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         event.target.classList.add('active');
-        new Game().renderInventory(); // Re-render logic attached to instance actually, but simplified here
-        // Note: Ideally Game instance should be global or singleton.
-        // Fixing scope for tab switch:
         window.gameInstance.renderInventory();
     }
 
@@ -472,7 +452,6 @@
         document.getElementById(id).classList.add('hidden');
     }
 
-    // Initialize Global Instance
     window.onload = () => {
         window.gameInstance = new Game();
     };
