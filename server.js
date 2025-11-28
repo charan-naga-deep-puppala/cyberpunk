@@ -10,42 +10,46 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// --- CONFIGURATION ---
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// Memory for caching enemy images
 const enemyRegistry = new Map();
 
 // --- WORLD DATA ---
 const CITIES = {
-    "Neo-Kowloon": "Classic Cyberpunk. Rain, neon, noodle stands, high-tech low-life. Starter zone.",
-    "Solaris District": "Inspired by Stanislaw Lem. A sterile, oceanic research sector. Psychological horror, hallucinations, living liquid architecture.",
-    "Magrathea Heights": "Inspired by Hitchhiker's Guide. Ultra-luxury planet-builder factory. Artificial sunsets, gold-plated robots, absurd bureaucracy.",
-    "Trantor Deep": "Inspired by Asimov. A city-planet completely covered in metal. Endless layers of bureaucracy, piping, and ancient imperial decay.",
-    "The Zone": "Inspired by Stalker. A cordoned-off anomaly area. Physics don't work right here. Rust, overgrown nature, invisible traps.",
-    "Ubik Reality": "Inspired by Philip K. Dick. A retro-futuristic suburb that constantly regresses in time. Things decay rapidly. Paranoia."
+    "Neo-Kowloon": "Classic Cyberpunk. Rain, neon, noodle stands. The Police Station is here.",
+    "The Scrapyard": "Industrial hellscape. Burning metal, recycling compactors, hydraulic presses.",
+    "Solaris District": "Psychological horror sector. Hallucinations, living liquid architecture.",
+    "Magrathea Heights": "Ultra-luxury planet-builder factory. Gold-plated robots, artificial sunsets.",
+    "Trantor Deep": "City-planet covered in metal layers. Endless bureaucracy, pipes, steam.",
+    "The Zone": "An anomaly area. Physics glitch here. Rust, overgrown nature, invisible traps.",
+    "Ubik Reality": "Retro-futuristic suburb that constantly decays and regresses in time."
 };
 
 // --- GAME MASTER PERSONA ---
 const SYSTEM_INSTRUCTION = `
 You are the Game Master of a high-stakes Sci-Fi RPG.
-1. CONTEXT: Player is in [CURRENT_CITY]. Use its specific "Vibe" in descriptions.
-2. PROFILE: Incorporate the player's Name, Class, and Style into the narration.
-3. MECHANIC - TRAVEL: If the player moves to a new city, describe the arrival.
-4. MECHANIC - CASE SOLVING: 
-   - Each city has a specific Case/Mystery.
-   - If the player solves the current city's case, set "caseSolved": true in the JSON.
-5. UI LOCK/PUZZLES: If the player is hacked or stunned, set "uiLocked": true and provide a "puzzleQuestion".
-   - When UI is locked, "choices" must be empty [].
+
+### MECHANICS:
+1. **COMBAT SYSTEM (REPLACES PUZZLES):**
+   - If a fight starts, set "inCombat": true.
+   - Define "enemyStats": { "name": "Enemy Name", "hp": 50, "maxHp": 50 }.
+   - If "inCombat" is already true:
+     - Calculate Player Damage (based on class/weapons). Reduce Enemy HP.
+     - Calculate Enemy Damage (based on enemy type). Reduce Player HP in "stats".
+     - Narrate the exchange (e.g., "You fire your pistol (12 dmg). The bot claws you (8 dmg).")
+   - If Enemy HP <= 0, set "inCombat": false and describe the victory/loot.
+   
+2. **LOCATION:** Use [CURRENT_CITY] vibe.
+3. **TRAVEL:** Describe transit between cities.
+4. **CASE SOLVING:** If mystery solved, set "caseSolved": true.
 
 JSON FORMAT:
 {
   "narrative": "Story text.",
   "visual_prompt": "Visual description.",
   "enemyName": "String or null",
-  "choices": ["Opt1", "Opt2"],
-  "uiLocked": boolean, 
-  "puzzleQuestion": "String or null",
+  "inCombat": boolean,
+  "enemyStats": { "name": "String", "hp": number, "maxHp": number } OR null,
+  "choices": ["Attack", "Defend", "Item"], 
   "caseSolved": boolean,
   "stats": { "hp": 100, "credits": 50, "inventory": [] },
   "isGameOver": boolean
@@ -55,23 +59,14 @@ JSON FORMAT:
 // --- HELPER: GENERATE IMAGE ---
 async function generateImagenImage(prompt) {
     try {
-        console.log(">> Requesting Image from Imagen...");
-        
-        // Use 'imagen-3.0-generate-001'. Try '4.0' if your key supports it.
         const response = await ai.models.generateImages({
             model: 'imagen-3.0-generate-001', 
             prompt: "Cyberpunk sci-fi style, cinematic lighting. " + prompt,
-            config: { 
-                numberOfImages: 1,
-                aspectRatio: "16:9" 
-            },
+            config: { numberOfImages: 1, aspectRatio: "16:9" },
         });
-
         const imgBytes = response.generatedImages[0].image.imageBytes;
         return `data:image/png;base64,${imgBytes}`;
-
     } catch (error) {
-        console.warn(">> Imagen Error (Falling back):", error.message);
         const seed = Math.floor(Math.random() * 9999);
         return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true&seed=${seed}`;
     }
@@ -80,22 +75,41 @@ async function generateImagenImage(prompt) {
 // --- MAIN TURN ENDPOINT ---
 app.post('/api/turn', async (req, res) => {
     try {
-        const { history, userAction, currentStats, playerProfile, currentCity } = req.body;
+        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats } = req.body;
         
-        const cityVibe = CITIES[currentCity] || CITIES["Neo-Kowloon"];
-        console.log(`Action: ${userAction} | Loc: ${currentCity}`);
+        // --- ORIGIN STORY (First Turn) ---
+        if (history.length === 0) {
+            if (playerProfile.archetype === "RAVEN") {
+                currentCity = "Neo-Kowloon";
+                userAction = "I am Raven. Sitting in my office at the Precinct. Reviewing the files on the new murder case.";
+            } else if (playerProfile.archetype === "I-6") {
+                currentCity = "The Scrapyard";
+                userAction = "I am Unit I-6. Systems online. I am on a conveyor belt to the furnace. I must escape.";
+            } else {
+                currentCity = "Neo-Kowloon";
+                userAction = `I am ${playerProfile.name}, a ${playerProfile.class}. ${playerProfile.backstory}`;
+            }
+        }
+
+        const cityVibe = CITIES[currentCity] || "Cyberpunk City";
+        console.log(`Action: ${userAction.substring(0,20)}... | Combat: ${!!enemyStats}`);
 
         // 1. GENERATE STORY
         let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n\n`;
-        fullPrompt += `PLAYER PROFILE: ${playerProfile?.name} (${playerProfile?.class})\n`;
-        fullPrompt += `LOCATION: ${currentCity}\nLOCATION VIBE: ${cityVibe}\n`;
-        fullPrompt += `STATUS: HP=${currentStats.hp} | CREDITS=${currentStats.credits}\n`;
+        fullPrompt += `PLAYER: ${playerProfile?.name} (${playerProfile?.class})\n`;
+        fullPrompt += `LOC: ${currentCity} (${cityVibe})\n`;
+        fullPrompt += `STATUS: HP=${currentStats.hp}\n`;
+        
+        if (enemyStats) {
+            fullPrompt += `CURRENT ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp}/${enemyStats.maxHp})\n`;
+        }
+
         fullPrompt += `HISTORY:\n`;
-        history.slice(-10).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
-        fullPrompt += `PLAYER: ${userAction}\nGM (JSON):`;
+        history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
+        fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
+            model: 'gemini-1.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
@@ -104,45 +118,34 @@ app.post('/api/turn', async (req, res) => {
 
         // 2. GENERATE IMAGE
         let finalImageUrl = "";
-        
         const isFirstTurn = history.length === 0;
 
         if (isFirstTurn) {
-            console.log("Generating Player Avatar...");
-            finalImageUrl = await generateImagenImage(`Portrait of ${playerProfile.name}, a ${playerProfile.class} wearing ${playerProfile.style}, in ${currentCity}`);
+            finalImageUrl = await generateImagenImage(`Portrait of ${playerProfile.name}, ${playerProfile.style}, inside ${currentCity}`);
         } else if (gameData.enemyName) {
             const slug = gameData.enemyName.trim().toLowerCase().replace(/\s+/g, '-');
             if (enemyRegistry.has(slug)) {
-                console.log(`Using cached image for ${gameData.enemyName}`);
                 finalImageUrl = enemyRegistry.get(slug);
             } else {
-                console.log(`Generating NEW image for ${gameData.enemyName}`);
                 finalImageUrl = await generateImagenImage("Character portrait of " + gameData.visual_prompt);
                 enemyRegistry.set(slug, finalImageUrl);
             }
+        } else if (gameData.inCombat) {
+             finalImageUrl = await generateImagenImage(`Action shot, combat, ${gameData.visual_prompt}`);
         } else {
-            finalImageUrl = await generateImagenImage(`Scene in ${currentCity}: ${gameData.visual_prompt}`);
+            finalImageUrl = await generateImagenImage(`Cinematic scene in ${currentCity}: ${gameData.visual_prompt}`);
         }
 
+        gameData.currentCity = currentCity; 
         gameData.imageUrl = finalImageUrl;
+        
         res.json(gameData);
 
     } catch (error) {
         console.error("Server Error:", error);
-        res.status(500).json({ 
-            narrative: "System Failure. The neural link has been severed.", 
-            choices: ["Reboot System"], 
-            stats: req.body.currentStats 
-        });
+        res.status(500).json({ narrative: "System Failure.", choices: ["Retry"], stats: req.body.currentStats });
     }
 });
 
-// Serve the HTML file
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.listen(port, () => {
-    console.log(`GenAI Server running on http://localhost:${port}`);
-});
-
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.listen(port, () => console.log(`Server running on port ${port}`));
