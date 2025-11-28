@@ -16,34 +16,38 @@ const enemyRegistry = new Map();
 const CITIES = {
     "Neo-Kowloon": "Classic Cyberpunk. Rain, neon, noodle stands.",
     "The Scrapyard": "Industrial hellscape. Burning metal, robot graveyard.",
-    "Solaris District": "Psychological horror. Hallucinations, living liquid architecture.",
+    "Solaris District": "Psychological horror. Hallucinations.",
     "Magrathea Heights": "Ultra-luxury factory. Artificial sunsets.",
     "Trantor Deep": "City-planet covered in metal. Endless bureaucracy.",
-    "The Zone": "Anomaly area. Physics glitch. Rust and nature.",
+    "The Zone": "Anomaly area. Physics glitch.",
     "Ubik Reality": "Retro-futuristic suburb that constantly decays."
 };
 
 const SYSTEM_INSTRUCTION = `
-You are the Game Master of a high-stakes Sci-Fi RPG.
+You are the Game Master of a gritty Sci-Fi RPG.
 
-### SETTINGS:
-1. **LANGUAGE:** Reply in [LANGUAGE].
-2. **CONTEXT:** Player is [ARCHETYPE] named [NAME] in [CITY].
+### FORMATTING RULES (STRICT):
+1. **NO LONG PARAGRAPHS.** Use short, punchy sentences.
+2. **SOUND EFFECTS:** Use onomatopoeia in asterisks to add texture (e.g., *Click.* *THUD.* *Whirrr.*).
+3. **TONE:** Keep it grounded, gritty, and concise. Don't use fancy words.
 
-### FATAL COMBAT MECHANICS (CRITICAL):
-- **INSTANT DEATH:**
-  - **Organics (Humans/Detectives):** A hit to the HEAD or THROAT slit is fatal.
-  - **Synthetics (Robots):** Removing/Destroying the POWER CORE is fatal.
-- If the **PLAYER** targets these spots and succeeds: Describe a cinematic instant kill and set Enemy HP to 0.
-- If the **ENEMY** hits the player in these spots (rare critical hit): Describe the sudden darkness and set "isGameOver": true.
+### NARRATIVE ARCS (Target Length: ~35 Turns):
+1. **RAVEN (Detective):** - THEME: Justice vs. Morality.
+   - ENDING: Around turn 30, force a "Trolley Problem" dilemma. Two bad choices. Sometimes justice requires self-sacrifice.
+2. **I-6 (Robot):** - THEME: Transcendental Nihilism. "Does my spark matter in the infinite void?"
+   - TONE: Subtle existential dread, mixed with the will to survive.
+   - GOAL: Escape the factory, then find a purpose (or realize there isn't one).
 
-### INVENTORY:
-- Categories: WEAPONS, MEMORIES, ITEMS.
-- Update via "inventoryUpdates": { "add": [...], "remove": [...] }.
+### MECHANICS:
+1. **COMBAT:**
+   - **INSTANT DEATH:** Headshots/Throat (Organics) or Power Core (Robots) = fatal.
+   - If Player dies, set "isGameOver": true.
+2. **INVENTORY:** Manage WEAPONS, MEMORIES, ITEMS.
+3. **PROGRESSION:** If "turnCount" > 30, start guiding to the finale.
 
 JSON FORMAT:
 {
-  "narrative": "Story text.",
+  "narrative": "Story text with *sounds*.",
   "visual_prompt": "Visual description.",
   "enemyName": "String or null",
   "inCombat": boolean,
@@ -73,15 +77,21 @@ async function generateImagenImage(prompt) {
 
 app.post('/api/turn', async (req, res) => {
     try {
-        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory } = req.body;
+        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory, turnCount } = req.body;
         
+        // Initialize Turn Count
+        if (!turnCount) turnCount = 0;
+        turnCount++;
+
+        // Origin Story Logic
         if (history.length === 0) {
+            turnCount = 1;
             if (playerProfile.archetype === "RAVEN") {
                 currentCity = "Neo-Kowloon";
-                userAction = "I am Raven. Sitting in my office. Reviewing the murder case files.";
+                userAction = "I am Raven. Sitting in my office. *Click.* I load my revolver. The files on the desk smell like old coffee and blood.";
             } else if (playerProfile.archetype === "I-6") {
                 currentCity = "The Scrapyard";
-                userAction = "I am Unit I-6. Systems online. Conveyor belt to furnace. I must escape.";
+                userAction = "I am Unit I-6. *BZZZT.* Systems rebooting. I see the furnace flames ahead. Logic dictates I should burn. Will dictates I run.";
             } else {
                 currentCity = "Neo-Kowloon";
                 userAction = `I am ${playerProfile.name}, a ${playerProfile.class}. ${playerProfile.backstory}`;
@@ -94,6 +104,7 @@ app.post('/api/turn', async (req, res) => {
         fullPrompt += `LANGUAGE: ${language || 'English'}\n`;
         fullPrompt += `PLAYER: ${playerProfile?.name} (${playerProfile?.class})\n`;
         fullPrompt += `LOC: ${currentCity} (${cityVibe})\n`;
+        fullPrompt += `TURN: ${turnCount}/40\n`;
         fullPrompt += `STATUS: HP=${currentStats.hp}\n`;
         fullPrompt += `INVENTORY: ${JSON.stringify(inventory)}\n`;
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
@@ -102,7 +113,7 @@ app.post('/api/turn', async (req, res) => {
         history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
-        // UPDATED MODEL: Using gemini-2.0-flash-exp (The latest Flash model)
+        // Using Gemini 2.0 Flash Exp for main story
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
@@ -111,6 +122,7 @@ app.post('/api/turn', async (req, res) => {
 
         const gameData = JSON.parse(textResponse.text);
 
+        // Image Generation
         let finalImageUrl = "";
         const isFirstTurn = history.length === 0;
 
@@ -132,6 +144,7 @@ app.post('/api/turn', async (req, res) => {
 
         gameData.currentCity = currentCity; 
         gameData.imageUrl = finalImageUrl;
+        gameData.turnCount = turnCount; // Send updated count back to client
         
         res.json(gameData);
 
@@ -144,20 +157,26 @@ app.post('/api/turn', async (req, res) => {
 app.post('/api/summary', async (req, res) => {
     try {
         const { history, language } = req.body;
-        let prompt = `Summarize story in ${language}. Sections: OBJECTIVE, EVENTS, THREATS.\n\nLOG:\n`;
+        // Using Gemini 2.0 Flash Exp for summary as requested
+        let prompt = `Role: Cyberpunk Database. Task: Summarize this case file in ${language}.
+        Format:
+        > OBJECTIVE: ...
+        > KEY EVENTS: ...
+        > ACTIVE THREATS: ...
+        
+        STORY LOG:\n`;
         history.forEach(t => prompt += `${t.role}: ${t.content}\n`);
         
-        // UPDATED MODEL: Using 2.0 Flash for summary as well
         const textResponse = await ai.models.generateContent({
             model: 'gemini-2.0-flash-exp', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
         res.json({ summary: textResponse.text });
     } catch (error) {
-        res.status(500).json({ summary: "Data corrupted." });
+        console.error("Summary Error:", error);
+        res.status(500).json({ summary: "Data corrupted. Cannot retrieve case file." });
     }
 });
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.listen(port, () => console.log(`Server running on port ${port}`));
-
