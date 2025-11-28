@@ -142,7 +142,7 @@
             this.setLoading(true);
 
             try {
-                const response = await fetch('http://localhost:3000/api/turn', {
+                const response = await fetch('/api/turn', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -222,4 +222,5 @@
     const game = new CyberpunkRPG();
     </script>
 </body>
+
 </html>
