@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
+const path = require('path'); // <--- FIX 1: Added missing Path import
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
@@ -10,13 +10,10 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Gemini for TEXT only
+// Initialize Google Gen AI
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// --- DEEPAI CONFIGURATION ---
-const DEEPAI_API_KEY = process.env.DEEPAI_API_KEY;
-const STYLE_SUFFIX = ", extremely grainy, high ISO noise, blurry, motion blur, dystopian, analog horror style, low resolution, silhouette, face hidden, cinematic, atmospheric, gloom, cctv footage style";
-
+// --- WORLD DATA ---
 const CITIES = {
     "Neo-Kowloon": "Rain. Neon. Noodle stands. Concrete.",
     "The Scrapyard": "Rust. Fire. Metal crushers.",
@@ -28,6 +25,7 @@ const CITIES = {
     "Gargantus Space": "Void. Stars. Impossible shapes."
 };
 
+// --- SYSTEM PROMPT ---
 const SYSTEM_INSTRUCTION = `
 You are the Game Master of a Sci-Fi RPG.
 
@@ -69,35 +67,50 @@ JSON FORMAT:
 }
 `;
 
-// --- DEEPAI IMAGE GENERATION ---
-async function generateDeepAIImage(prompt) {
+// --- HELPER: SAFE JSON EXTRACTION ---
+// FIX 2: This handles the error where .text() might not be a function
+function extractJSON(response) {
+    let text = "";
+    // Check if it's a function (Newer SDK versions)
+    if (typeof response.text === 'function') {
+        text = response.text();
+    } 
+    // Check if it's a property (Some specific environments)
+    else if (typeof response.text === 'string') {
+        text = response.text;
+    } 
+    // Check standard candidate structure
+    else if (response.candidates && response.candidates[0].content.parts[0].text) {
+        text = response.candidates[0].content.parts[0].text;
+    }
+    
+    // Clean up potential markdown formatting (```json ... ```)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return JSON.parse(jsonMatch[0]);
+    
+    return JSON.parse(text); // Try parsing raw
+}
+
+// --- IMAGE GENERATION ---
+async function generateGeminiImage(prompt) {
     try {
-        console.log(">> Generating Image with DeepAI...");
-        
-        // Native fetch (Node 18+)
-        const resp = await fetch('https://api.deepai.org/api/text2img', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'api-key': DEEPAI_API_KEY
-            },
-            body: JSON.stringify({
-                text: prompt + STYLE_SUFFIX,
-            })
+        const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash-exp", // Using 2.0 Flash Exp for images if available, or swap to your preferred model
+            contents: "Create a cyberpunk noir style illustration, cinematic lighting: " + prompt,
         });
-
-        const data = await resp.json();
         
-        if (data.output_url) {
-            return data.output_url;
-        } else {
-            console.error("DeepAI Error:", data);
-            return "https://placehold.co/600x400/000000/00ff41?text=SIGNAL+LOST";
+        // Handle image data extraction safely
+        if(response.candidates && response.candidates[0].content.parts) {
+             for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                }
+            }
         }
-
+        return null;
     } catch (error) {
         console.error("Image Gen Error:", error.message);
-        return "https://placehold.co/600x400/000000/00ff41?text=CONNECTION+FAILURE";
+        return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+DATA+CORRUPT";
     }
 }
 
@@ -139,22 +152,14 @@ app.post('/api/turn', async (req, res) => {
         history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
-        // Text Generation (Gemini)
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
+            model: 'gemini-2.0-flash-exp', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
 
-        // Robust JSON Parsing
-        let gameData;
-        const rawText = textResponse.response ? textResponse.response.text() : textResponse.text(); // Handle updated SDK return types
-        try {
-            gameData = JSON.parse(rawText);
-        } catch (e) {
-            // Fallback if AI creates bad JSON
-            gameData = { narrative: "Data stream corrupted.", choices: ["Retry"], stats: currentStats };
-        }
+        // USE THE NEW SAFE EXTRACTOR
+        const gameData = extractJSON(textResponse);
 
         // Check for Forced Ending
         if (turnCount >= maxTurns && !gameData.isGameOver) {
@@ -162,23 +167,18 @@ app.post('/api/turn', async (req, res) => {
             gameData.isGameOver = true;
         }
 
-        // Image Logic (DeepAI)
+        // Image Logic
         let finalImageUrl = "";
         const isFirstTurn = history.length === 0;
 
         if (isFirstTurn) {
-            finalImageUrl = await generateDeepAIImage(`Silhouette of ${playerProfile.name} in ${currentCity}`);
+            finalImageUrl = await generateGeminiImage(`Pixel art portrait of ${playerProfile.name}, ${playerProfile.style}, 8-bit style, green monochrome background`);
         } else if (gameData.enemyName) {
-            finalImageUrl = await generateDeepAIImage("Shadowy figure, " + gameData.visual_prompt);
+            finalImageUrl = await generateGeminiImage("Character portrait of " + gameData.visual_prompt);
         } else if (gameData.inCombat) {
-             finalImageUrl = await generateDeepAIImage(`Blurred action shot, violence, ${gameData.visual_prompt}`);
+             finalImageUrl = await generateGeminiImage(`Action shot, combat, ${gameData.visual_prompt}`);
         } else {
-            // 50% chance to show the Cityscape instead of specific action for atmosphere
-            if (Math.random() > 0.5) {
-                finalImageUrl = await generateDeepAIImage(`Wide shot of ${currentCity}, dystopia, ${gameData.visual_prompt}`);
-            } else {
-                finalImageUrl = await generateDeepAIImage(`Cinematic scene, ${gameData.visual_prompt}`);
-            }
+            finalImageUrl = await generateGeminiImage(`Cinematic scene in ${currentCity}: ${gameData.visual_prompt}`);
         }
 
         gameData.currentCity = currentCity; 
@@ -189,7 +189,12 @@ app.post('/api/turn', async (req, res) => {
 
     } catch (error) {
         console.error("Server Error:", error);
-        res.status(500).json({ narrative: "System Failure. Connection Lost.", choices: ["Retry"], stats: req.body.currentStats });
+        // Ensure we send a fallback JSON so client doesn't hang
+        res.status(500).json({ 
+            narrative: "System Failure. Connection Lost.", 
+            choices: ["Retry"], 
+            stats: req.body.currentStats || { hp: 100, credits: 0 } 
+        });
     }
 });
 
@@ -201,16 +206,24 @@ app.post('/api/summary', async (req, res) => {
         history.forEach(t => prompt += `${t.role}: ${t.content}\n`);
         
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
+            model: 'gemini-2.0-flash-exp', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
-        const summaryText = textResponse.response ? textResponse.response.text() : textResponse.text();
+        
+        // Use standard text extraction for non-JSON summary
+        let summaryText = "";
+        if (typeof textResponse.text === 'function') summaryText = textResponse.text();
+        else if (typeof textResponse.text === 'string') summaryText = textResponse.text;
+        else if (textResponse.candidates) summaryText = textResponse.candidates[0].content.parts[0].text;
+
         res.json({ summary: summaryText });
     } catch (error) {
-        console.error(error);
+        console.error("Summary Error:", error);
         res.status(500).json({ summary: "Data corrupted." });
     }
 });
 
+// Serve Frontend
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+
 app.listen(port, () => console.log(`Server running on port ${port}`));
