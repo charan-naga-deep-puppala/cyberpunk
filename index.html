@@ -11,8 +11,8 @@
     <style>
         body { background-color: #050505; color: #00ff41; font-family: 'VT323', monospace; overflow: hidden; }
         .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; }
-        @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
         .crt-flicker { animation: flicker 0.15s infinite; }
+        @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
         .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.95); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
@@ -33,7 +33,6 @@
         #story-log { font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; line-height: 1.6; color: #e0e0e0; }
         #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
 
-        /* PIXEL ART STATS */
         .heart-icon { width: 16px; height: 16px; display: inline-block; margin-right: 2px; background-size: cover; image-rendering: pixelated; }
         .heart-full { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" d="M2 2h2v2H2zM6 2h2v2H6zM1 4h2v2H1zM7 4h2v2H7zM2 6h6v2H2zM3 8h4v2H3z"/></svg>'); }
         .heart-empty { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23330000" d="M2 2h2v2H2zM6 2h2v2H6zM1 4h2v2H1zM7 4h2v2H7zM2 6h6v2H2zM3 8h4v2H3z"/></svg>'); }
@@ -49,8 +48,11 @@
         .inv-item { font-size: 1.1rem; padding: 6px; border-bottom: 1px dashed #004400; cursor: help; }
         .inv-item:hover { color: #ccffcc; background: #002200; }
 
-        .loot-item { border: 1px solid #ffff00; color: #ffff00; padding: 8px; margin-top: 5px; cursor: pointer; text-align: center; background: rgba(50,50,0,0.5); font-weight: bold; }
+        .loot-item { border: 1px solid #ffff00; color: #ffff00; padding: 10px; margin: 5px; cursor: pointer; text-align: center; background: rgba(50,50,0,0.5); font-weight: bold; width: 100%; }
         .loot-item:hover { background: #555500; }
+        
+        .ability-btn { border: 1px solid cyan; color: cyan; padding: 8px; text-transform: uppercase; cursor: pointer; text-align: center; background: #001111; }
+        .ability-btn:hover { background: cyan; color: black; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col p-2 crt-flicker gap-2 select-none">
@@ -58,7 +60,7 @@
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0 relative z-50">
-        <span>NEON_PROTOCOL // V.26.0</span>
+        <span>NEON_PROTOCOL // V.30.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -124,13 +126,7 @@
         <button id="btn-start" onclick="initGame()" class="btn-main w-64 text-center font-bold text-2xl mt-10 relative z-50" disabled>JACK IN</button>
     </div>
 
-    <div id="screen-gameover" class="overlay hidden flex-col gap-6">
-        <h1 class="text-8xl text-red-600 font-bold tracking-widest animate-pulse">TERMINATED</h1>
-        <button onclick="location.reload()" class="btn-main text-red-500 border-red-500 text-3xl px-12 relative z-50">REBOOT SYSTEM</button>
-    </div>
-
     <div id="screen-game" class="hidden flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 overflow-hidden relative z-10">
-        
         <div class="panel md:col-span-3 text-lg">
             <div class="flex flex-col gap-2 border-b border-[#004400] pb-4">
                 <div class="text-[#00ff41] font-bold text-sm">VITALITY</div>
@@ -139,8 +135,13 @@
                 <div id="pixel-cred" class="flex flex-wrap gap-1 min-h-[14px]"></div>
             </div>
 
+            <div class="mt-2 border-b border-[#004400] pb-4">
+                <div class="text-cyan-400 font-bold text-sm mb-2">ACTIVE ABILITIES</div>
+                <div id="ability-list" class="grid grid-cols-2 gap-2"></div>
+            </div>
+
             <div class="flex-1 flex flex-col overflow-hidden mt-2">
-                <div class="text-[#00ff41] font-bold mb-2 uppercase text-sm">Known Associates</div>
+                <div class="text-[#00ff41] font-bold mb-2 uppercase text-sm">Associates</div>
                 <div id="char-list" class="flex-1 overflow-y-auto pr-1">
                     <div class="text-gray-600 italic text-sm">No records.</div>
                 </div>
@@ -167,12 +168,6 @@
             </div>
 
             <div id="story-log" class="flex-1 overflow-y-auto p-4 text-xl relative"></div>
-
-            <div id="loot-area" class="hidden p-2 border-t border-yellow-500 bg-[#1a1a00] z-20">
-                <div class="text-yellow-500 text-xs font-bold">SCANNER: OBJECTS DETECTED</div>
-                <div id="loot-list" class="flex gap-2 flex-wrap"></div>
-            </div>
-
             <div id="choices-area" class="grid grid-cols-2 gap-3 mt-2 pt-2 border-t border-[#004400]"></div>
             
             <div id="puzzle-area" class="hidden flex gap-2 mt-2">
@@ -189,6 +184,13 @@
             </div>
             <div id="inv-list" class="flex-1 overflow-y-auto content-start flex flex-col gap-2 p-1 mt-2"></div>
             <div id="item-info" class="h-32 border-t border-[#004400] p-2 text-base text-gray-400 italic">Hover items for data.</div>
+        </div>
+    </div>
+
+    <div id="overlay-loot" class="overlay hidden">
+        <div class="panel w-full max-w-lg border-yellow-500 relative z-50">
+            <div class="flex justify-between border-b border-yellow-500 pb-2"><h2 class="text-2xl text-yellow-500">OBJECTS DETECTED</h2><button onclick="closeOverlay('overlay-loot')" class="text-yellow-500 text-xl">[X]</button></div>
+            <div id="loot-list" class="flex flex-col gap-2 p-4 max-h-96 overflow-y-auto"></div>
         </div>
     </div>
 
@@ -216,12 +218,16 @@
         </div>
     </div>
 
+    <div id="screen-gameover" class="overlay hidden flex-col gap-6">
+        <h1 class="text-8xl text-red-600 font-bold tracking-widest animate-pulse">TERMINATED</h1>
+        <button onclick="location.reload()" class="btn-main text-red-500 border-red-500 text-3xl px-12 relative z-50">REBOOT SYSTEM</button>
+    </div>
+
     <script>
     const DB_LORE = {
-        "Service Revolver": "Standard issue .45 caliber. Kinetic stopping power.",
-        "Arc Welder": "Modified industrial tool. 50kV short-range discharge.",
-        "Neo-Kowloon": "Oldest sector. Dense, rainy, high crime rate.",
-        "The Scrapyard": "Robot graveyard. Toxic fumes. Recycling facility.",
+        "Service Revolver": "Standard issue .45 caliber.",
+        "Arc Welder": "Modified industrial tool. 50kV.",
+        "Neo-Kowloon": "Oldest sector. Dense, rainy.",
         "Combat": "Headshots (Organics) or Core (Robots) are fatal."
     };
 
@@ -242,6 +248,7 @@
     };
 
     let selectedArch = null;
+    let bgm = null; // Defined in initGame
 
     function setLanguage(lang) {
         state.lang = lang;
@@ -281,25 +288,27 @@
     }
 
     function initGame() {
+        // AUDIO INIT
+        bgm = new Audio('EastHastings.mp3');
+        bgm.loop = true;
+        bgm.volume = 0.5;
+        bgm.play().catch(e => console.log("Audio Error (File missing?):", e));
+
         if (selectedArch === 'RAVEN') {
-            state.profile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir trenchcoat, smoking" };
+            state.profile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir trenchcoat, smoking", abilities: ["FORENSICS", "INTIMIDATE"] };
             state.inventory.weapons.push("Service Revolver");
-            state.inventory.memories.push("Victim's Face");
             state.unlockedCities = ["Neo-Kowloon"];
         } else if (selectedArch === 'I-6') {
-            state.profile = { name: "I-6", archetype: "I-6", class: "Robot", style: "Rusted chassis" };
+            state.profile = { name: "I-6", archetype: "I-6", class: "Robot", style: "Rusted chassis", abilities: ["HACK", "OVERCLOCK"] };
             state.inventory.weapons.push("Arc Welder");
-            state.inventory.memories.push("Awakening Code");
             state.unlockedCities = ["The Scrapyard"];
         } else if (selectedArch === 'GARGANTUS') {
-            state.profile = { name: "Pilot", archetype: "GARGANTUS", class: "Explorer", style: "Space Suit" };
-            state.inventory.items.push("Logbook");
+            state.profile = { name: "Pilot", archetype: "GARGANTUS", class: "Explorer", style: "Space Suit", abilities: ["SCAN", "PHILOSOPHIZE"] };
             state.unlockedCities = ["Gargantus Space"];
         } else {
             const n = document.getElementById('inp-name').value || "V";
             const d = document.getElementById('inp-desc').value || "Drifter";
-            state.profile = { name: n, archetype: "CUSTOM", class: "Custom", style: d, backstory: d };
-            state.inventory.items.push("Datapad");
+            state.profile = { name: n, archetype: "CUSTOM", class: "Custom", style: d, backstory: d, abilities: ["IMPROVISE"] };
             state.unlockedCities = ["Neo-Kowloon"];
         }
 
@@ -307,6 +316,7 @@
         document.getElementById('screen-game').classList.remove('hidden');
         document.getElementById('screen-game').classList.add('grid');
         
+        renderAbilities();
         renderInventory();
         renderStats();
         makeTurn("");
@@ -347,7 +357,10 @@
 
             if (data.inventoryUpdates && data.inventoryUpdates.add) {
                 data.inventoryUpdates.add.forEach(i => {
-                    if(state.inventory[i.category]) state.inventory[i.category].push(i.item);
+                    let cat = i.category || 'items';
+                    if (!cat.endsWith('s')) cat += 's';
+                    if(!state.inventory[cat]) cat = 'items'; 
+                    state.inventory[cat].push(i.item);
                 });
                 renderInventory();
             }
@@ -359,25 +372,22 @@
                 renderCharacters();
             }
 
-            const lootArea = document.getElementById('loot-area');
-            const lootList = document.getElementById('loot-list');
+            // LOOTING MODAL
             if (data.availableItems && data.availableItems.length > 0) {
-                lootArea.classList.remove('hidden');
+                const lootList = document.getElementById('loot-list');
                 lootList.innerHTML = '';
                 data.availableItems.forEach(item => {
                     const btn = document.createElement('div');
                     btn.className = 'loot-item';
                     btn.innerHTML = `[PICK UP] ${item.name}`;
-                    btn.title = item.description;
                     btn.onclick = () => {
                         btn.remove();
-                        if(lootList.children.length === 0) lootArea.classList.add('hidden');
-                        makeTurn(`I take the ${item.name}.`);
+                        if(lootList.children.length === 0) closeOverlay('overlay-loot');
+                        makeTurn(`I pick up the ${item.name}.`);
                     };
                     lootList.appendChild(btn);
                 });
-            } else {
-                lootArea.classList.add('hidden');
+                document.getElementById('overlay-loot').classList.remove('hidden');
             }
 
             state.history.push({ role: 'user', content: action || "Start" });
@@ -456,7 +466,6 @@
             h.className = `${iconClass} ${i < hearts ? fillClass : emptyClass}`;
             hpContainer.appendChild(h);
         }
-
         const credContainer = document.getElementById('pixel-cred');
         credContainer.innerHTML = '';
         const coins = Math.min(20, Math.ceil(state.stats.credits / 10));
@@ -467,13 +476,22 @@
         }
     }
 
+    function renderAbilities() {
+        const list = document.getElementById('ability-list');
+        list.innerHTML = '';
+        state.profile.abilities.forEach(ab => {
+            const btn = document.createElement('div');
+            btn.className = "ability-btn";
+            btn.innerText = ab;
+            btn.onclick = () => makeTurn(`I use my ability: ${ab}`);
+            list.appendChild(btn);
+        });
+    }
+
     function renderCharacters() {
         const list = document.getElementById('char-list');
         list.innerHTML = '';
-        if (state.knownCharacters.length === 0) {
-            list.innerHTML = '<div class="text-gray-600 italic text-sm">No records.</div>';
-            return;
-        }
+        if (state.knownCharacters.length === 0) { list.innerHTML = '<div class="text-gray-600 italic text-sm">No records.</div>'; return; }
         state.knownCharacters.forEach(char => {
             const el = document.createElement('div');
             el.className = "npc-item";
