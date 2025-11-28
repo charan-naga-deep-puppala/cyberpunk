@@ -19,58 +19,80 @@
         .choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .hud-box { border: 1px solid #004400; background: #001100; padding: 0 8px; }
 
-        /* MAP STYLES */
-        .city-node { width: 20px; height: 20px; border: 2px solid #004400; background: #000; border-radius: 50%; position: absolute; cursor: pointer; transition: all 0.3s; }
-        .city-node.unlocked { border-color: #00ff41; background: #002200; box-shadow: 0 0 10px #00ff41; }
-        .city-node:hover.unlocked { transform: scale(1.5); background: #00ff41; }
-        .city-node.active { background: #fff; border-color: #fff; box-shadow: 0 0 15px #fff; }
+        .char-card { border: 1px solid #004400; padding: 15px; cursor: pointer; transition: all 0.3s; opacity: 0.7; }
+        .char-card:hover { border-color: #00ff41; opacity: 1; transform: scale(1.02); background: #001100; }
+        .char-card.selected { border-color: #00ff41; background: #002200; opacity: 1; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
+
+        .travel-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #004400; padding: 12px; margin-bottom: 8px; transition: all 0.2s; }
+        .travel-item.unlocked:hover { background: #002200; border-color: #00ff41; cursor: pointer; }
+        .travel-item.locked { opacity: 0.5; border-color: #330000; color: #555; cursor: not-allowed; }
+        .travel-item.current { background: #00ff41; color: black; border-color: #00ff41; cursor: default; }
+
+        /* COMBAT STYLES */
+        .combat-mode { border-color: red !important; box-shadow: 0 0 20px rgba(255,0,0,0.2); }
+        .combat-text { color: #ff4444; }
+        .combat-bar { transition: width 0.3s ease; }
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center crt-flicker">
 
-    <div class="relative w-full max-w-4xl h-[95vh] border-4 border-[#003300] bg-black p-4 rounded-md flex flex-col gap-3">
+    <div id="main-frame" class="relative w-full max-w-5xl h-[95vh] border-4 border-[#003300] bg-black p-4 rounded-md flex flex-col gap-3 transition-colors duration-500">
         <div class="scanlines"></div>
         
         <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80">
-            <span>NEON_PROTOCOL // V.7.0</span>
-            <span id="current-loc-display" class="text-yellow-400">LOC: NEO-KOWLOON</span>
+            <span>NEON_PROTOCOL // V.10.0</span>
+            <span id="current-loc-display" class="text-yellow-400">LOC: UNKNOWN</span>
         </div>
 
-        <div id="char-creation-screen" class="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center gap-6 p-10 m-2">
-            <h1 class="text-4xl text-[#00ff41] text-center tracking-widest animate-pulse">IDENTITY INITIALIZATION</h1>
-            <input type="text" id="char-name" class="w-full max-w-md bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none" placeholder="HANDLE (NAME)">
-            <input type="text" id="char-class" class="w-full max-w-md bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none" placeholder="CLASS (e.g. Solo, Netrunner)">
-            <input type="text" id="char-style" class="w-full max-w-md bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none" placeholder="STYLE (e.g. Chrome arm)">
-            <button id="jack-in-btn" class="border border-[#00ff41] p-3 hover:bg-[#00ff41] hover:text-black uppercase tracking-widest w-full max-w-md">JACK IN</button>
+        <div id="char-creation-screen" class="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center gap-6 p-4 overflow-y-auto">
+            <h1 class="text-4xl text-[#00ff41] tracking-widest animate-pulse mt-10">SELECT ARCHETYPE</h1>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl">
+                <div class="char-card" onclick="selectChar('RAVEN', this)">
+                    <h2 class="text-2xl font-bold mb-2">RAVEN</h2>
+                    <p class="text-sm text-gray-400">Detective. Justice-obsessed. Starts in Neo-Kowloon.</p>
+                </div>
+                <div class="char-card" onclick="selectChar('I-6', this)">
+                    <h2 class="text-2xl font-bold mb-2">UNIT I-6</h2>
+                    <p class="text-sm text-gray-400">Rogue AI. Fighting for consciousness. Starts in Scrapyard.</p>
+                </div>
+                <div class="char-card" onclick="selectChar('CUSTOM', this)">
+                    <h2 class="text-2xl font-bold mb-2">THE ANOMALY</h2>
+                    <p class="text-sm text-gray-400">Define your own origin.</p>
+                </div>
+            </div>
+            <div id="custom-input-area" class="w-full max-w-2xl hidden flex-col gap-2 border-t border-[#004400] pt-4">
+                <input type="text" id="custom-name" class="bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41]" placeholder="NAME">
+                <input type="text" id="custom-desc" class="bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41]" placeholder="BACKSTORY">
+            </div>
+            <button id="jack-in-btn" class="border border-[#00ff41] p-3 hover:bg-[#00ff41] hover:text-black uppercase tracking-widest w-full max-w-xs text-xl font-bold disabled:opacity-50" disabled>INITIALIZE LINK</button>
         </div>
 
         <div id="game-ui" class="hidden flex-1 flex flex-col gap-4 h-full relative z-10">
             <div class="flex flex-row gap-2 text-lg">
                 <div class="hud-box flex-1">HP: <span id="hp-display" class="text-red-500">100</span></div>
                 <div class="hud-box flex-1">CRED: <span id="credits-display" class="text-yellow-400">50</span></div>
-                <button id="map-toggle-btn" class="hud-box flex-1 text-center hover:bg-[#00ff41] hover:text-black cursor-pointer border-yellow-500 text-yellow-500">OPEN MAP</button>
+                <button id="map-toggle-btn" class="hud-box flex-1 text-center hover:bg-[#00ff41] hover:text-black cursor-pointer border-yellow-500 text-yellow-500">TRANSIT</button>
+            </div>
+
+            <div id="enemy-hud" class="hidden border border-red-600 bg-[#1a0000] p-2 flex-col gap-1">
+                <div class="flex justify-between text-red-500 text-sm">
+                    <span id="enemy-name">UNKNOWN HOSTILE</span>
+                    <span id="enemy-hp-text">100%</span>
+                </div>
+                <div class="w-full h-2 bg-[#330000]">
+                    <div id="enemy-hp-bar" class="h-full bg-red-600 w-full combat-bar"></div>
+                </div>
             </div>
 
             <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative">
-                <div id="map-screen" class="hidden absolute inset-0 bg-black/95 z-40 border border-[#00ff41] flex items-center justify-center">
-                    <div class="relative w-[80%] h-[80%] border border-[#004400] bg-[#001100]">
-                        <h2 class="absolute top-2 left-2 text-[#00ff41]">SECTOR MAP</h2>
-                        <button id="close-map-btn" class="absolute top-2 right-2 border border-red-500 text-red-500 px-2 hover:bg-red-500 hover:text-black">X</button>
-                        
-                        <div class="city-node unlocked active" style="top: 80%; left: 10%;" data-city="Neo-Kowloon" title="Neo-Kowloon"></div>
-                        <div class="city-node" style="top: 60%; left: 30%;" data-city="The Zone" title="The Zone"></div>
-                        <div class="city-node" style="top: 40%; left: 50%;" data-city="Solaris District" title="Solaris District"></div>
-                        <div class="city-node" style="top: 20%; left: 70%;" data-city="Trantor Deep" title="Trantor Deep"></div>
-                        <div class="city-node" style="top: 70%; left: 80%;" data-city="Ubik Reality" title="Ubik Reality"></div>
-                        <div class="city-node" style="top: 10%; left: 40%;" data-city="Magrathea Heights" title="Magrathea Heights"></div>
-
-                        <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-30">
-                            <line x1="10%" y1="80%" x2="30%" y2="60%" stroke="#00ff41" stroke-width="2" />
-                            <line x1="30%" y1="60%" x2="50%" y2="40%" stroke="#00ff41" stroke-width="2" />
-                            <line x1="50%" y1="40%" x2="70%" y2="20%" stroke="#00ff41" stroke-width="2" />
-                            <line x1="70%" y1="20%" x2="40%" y2="10%" stroke="#00ff41" stroke-width="2" />
-                            <line x1="30%" y1="60%" x2="80%" y2="70%" stroke="#00ff41" stroke-width="2" />
-                        </svg>
+                
+                <div id="travel-screen" class="hidden absolute inset-0 bg-black/95 z-40 border border-[#00ff41] flex items-center justify-center p-8">
+                    <div class="w-full max-w-2xl border border-[#004400] bg-[#001100] p-6 flex flex-col gap-4 h-[80vh]">
+                        <div class="flex justify-between items-center border-b border-[#004400] pb-2">
+                            <h2 class="text-2xl text-[#00ff41] tracking-widest">RAPID TRANSIT NETWORK</h2>
+                            <button id="close-map-btn" class="text-red-500 border border-red-500 px-3">[ CLOSE ]</button>
+                        </div>
+                        <div id="city-list" class="flex flex-col gap-2 overflow-y-auto"></div>
                     </div>
                 </div>
 
@@ -86,35 +108,45 @@
 
             <div id="interaction-area" class="border-t border-[#00ff41] pt-4 min-h-[120px]">
                 <div id="choice-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                <div id="puzzle-container" class="hidden flex gap-2">
-                    <div class="text-red-500 animate-pulse">LOCKED >></div>
-                    <input id="puzzle-input" class="flex-1 bg-[#001100] border border-[#00ff41] text-[#00ff41] p-2 focus:outline-none" placeholder="SOLVE...">
-                    <button id="submit-puzzle-btn" class="border border-[#00ff41] p-2 text-[#00ff41]">SEND</button>
-                </div>
             </div>
         </div>
     </div>
 
     <script>
+    let selectedArchetype = null;
+    function selectChar(type, element) {
+        selectedArchetype = type;
+        document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+        element.classList.add('selected');
+        document.getElementById('custom-input-area').classList.toggle('hidden', type !== 'CUSTOM');
+        document.getElementById('jack-in-btn').disabled = false;
+    }
+
     class CyberpunkRPG {
         constructor() {
             this.history = [];
-            this.currentCity = "Neo-Kowloon";
-            this.unlockedCities = ["Neo-Kowloon"];
+            this.currentCity = ""; 
+            this.unlockedCities = [];
             this.stats = { hp: 100, credits: 50 };
+            this.enemyStats = null; // Current enemy data
             this.playerProfile = {};
+            this.allCities = ["Neo-Kowloon", "The Scrapyard", "Solaris District", "Trantor Deep", "Ubik Reality", "Magrathea Heights", "The Zone"];
 
             this.ui = {
+                frame: document.getElementById('main-frame'),
                 charScreen: document.getElementById('char-creation-screen'),
                 game: document.getElementById('game-ui'),
-                map: document.getElementById('map-screen'),
+                travel: document.getElementById('travel-screen'),
+                cityList: document.getElementById('city-list'),
                 locDisplay: document.getElementById('current-loc-display'),
                 story: document.getElementById('story-text'),
                 img: document.getElementById('image-container'),
                 choices: document.getElementById('choice-container'),
-                puzzle: document.getElementById('puzzle-container'),
                 hp: document.getElementById('hp-display'),
-                cred: document.getElementById('credits-display')
+                cred: document.getElementById('credits-display'),
+                enemyHud: document.getElementById('enemy-hud'),
+                enemyName: document.getElementById('enemy-name'),
+                enemyBar: document.getElementById('enemy-hp-bar')
             };
 
             this.init();
@@ -122,28 +154,31 @@
 
         init() {
             document.getElementById('jack-in-btn').addEventListener('click', () => {
-                this.playerProfile = {
-                    name: document.getElementById('char-name').value || "V",
-                    class: document.getElementById('char-class').value || "Solo",
-                    style: document.getElementById('char-style').value || "Punk"
-                };
+                if (selectedArchetype === 'RAVEN') {
+                    this.playerProfile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir trenchcoat, smoking" };
+                    this.unlockedCities = ["Neo-Kowloon"];
+                } else if (selectedArchetype === 'I-6') {
+                    this.playerProfile = { name: "I-6", archetype: "I-6", class: "Robot", style: "Rusted metal chassis" };
+                    this.unlockedCities = ["The Scrapyard"];
+                } else {
+                    const name = document.getElementById('custom-name').value || "Drifter";
+                    const desc = document.getElementById('custom-desc').value || "A generic cyberpunk citizen";
+                    this.playerProfile = { name: name, archetype: "CUSTOM", class: "Custom", style: desc, backstory: desc };
+                    this.unlockedCities = ["Neo-Kowloon"];
+                }
+
                 this.ui.charScreen.classList.add('hidden');
                 this.ui.game.classList.remove('hidden');
                 this.startSound();
-                this.makeTurn(`Initialize game in ${this.currentCity}.`);
+                this.makeTurn("");
             });
 
             document.getElementById('map-toggle-btn').addEventListener('click', () => {
-                this.ui.map.classList.remove('hidden');
-                this.renderMap();
+                if(this.enemyStats) return; // No travel in combat
+                this.ui.travel.classList.remove('hidden');
+                this.renderTravelList();
             });
-            document.getElementById('close-map-btn').addEventListener('click', () => this.ui.map.classList.add('hidden'));
-
-            document.getElementById('submit-puzzle-btn').addEventListener('click', () => {
-                const val = document.getElementById('puzzle-input').value;
-                document.getElementById('puzzle-input').value = '';
-                this.makeTurn(`Puzzle Answer: ${val}`);
-            });
+            document.getElementById('close-map-btn').addEventListener('click', () => this.ui.travel.classList.add('hidden'));
         }
 
         async startSound() {
@@ -152,23 +187,25 @@
             synth.triggerAttackRelease(["C2", "G2"], "4n");
         }
 
-        renderMap() {
-            const nodes = document.querySelectorAll('.city-node');
-            nodes.forEach(node => {
-                const cityName = node.getAttribute('data-city');
-                node.classList.remove('unlocked', 'active');
+        renderTravelList() {
+            this.ui.cityList.innerHTML = '';
+            this.allCities.forEach(city => {
+                const isUnlocked = this.unlockedCities.includes(city);
+                const isCurrent = (city === this.currentCity);
+                const div = document.createElement('div');
+                div.className = `travel-item ${isCurrent ? 'current' : (isUnlocked ? 'unlocked' : 'locked')}`;
+                let statusText = isCurrent ? "[CURRENT]" : (isUnlocked ? ">> ACCESS GRANTED" : "XX LOCKED");
                 
-                if (cityName === this.currentCity) node.classList.add('unlocked', 'active');
-                else if (this.unlockedCities.includes(cityName)) node.classList.add('unlocked');
-
-                node.onclick = () => {
-                    if (this.unlockedCities.includes(cityName) && cityName !== this.currentCity) {
-                        this.currentCity = cityName;
-                        this.ui.map.classList.add('hidden');
-                        this.ui.locDisplay.innerText = `LOC: ${cityName.toUpperCase()}`;
-                        this.makeTurn(`Travel to ${cityName}. Describe the arrival.`);
-                    }
-                };
+                div.innerHTML = `<div><span class="font-bold text-lg">${city.toUpperCase()}</span><div class="text-xs">${statusText}</div></div>`;
+                if (isUnlocked && !isCurrent) {
+                    div.onclick = () => {
+                        this.currentCity = city;
+                        this.ui.travel.classList.add('hidden');
+                        this.ui.locDisplay.innerText = `LOC: ${city.toUpperCase()}`;
+                        this.makeTurn(`Travel to ${city}. Describe arrival.`);
+                    };
+                }
+                this.ui.cityList.appendChild(div);
             });
         }
 
@@ -184,27 +221,52 @@
                         userAction: action,
                         currentStats: this.stats,
                         playerProfile: this.playerProfile,
-                        currentCity: this.currentCity
+                        currentCity: this.currentCity,
+                        enemyStats: this.enemyStats // Send combat state
                     })
                 });
 
                 const data = await res.json();
                 
+                // State Updates
                 if (data.stats) this.stats = data.stats;
                 this.ui.hp.innerText = this.stats.hp;
                 this.ui.cred.innerText = this.stats.credits;
+                if (data.currentCity) {
+                    this.currentCity = data.currentCity;
+                    if (!this.unlockedCities.includes(this.currentCity)) this.unlockedCities.push(this.currentCity);
+                }
+                this.ui.locDisplay.innerText = `LOC: ${this.currentCity.toUpperCase()}`;
 
-                // Unlock logic
+                // COMBAT LOGIC
+                if (data.inCombat && data.enemyStats) {
+                    this.enemyStats = data.enemyStats;
+                    this.ui.enemyHud.classList.remove('hidden');
+                    this.ui.enemyHud.classList.add('flex');
+                    this.ui.enemyName.innerText = this.enemyStats.name.toUpperCase();
+                    const hpPercent = (this.enemyStats.hp / this.enemyStats.maxHp) * 100;
+                    this.ui.enemyBar.style.width = `${Math.max(0, hpPercent)}%`;
+                    
+                    // Style change for combat
+                    this.ui.frame.classList.add('border-red-600');
+                    document.body.style.color = '#ff4444';
+                } else {
+                    this.enemyStats = null;
+                    this.ui.enemyHud.classList.add('hidden');
+                    this.ui.enemyHud.classList.remove('flex');
+                    this.ui.frame.classList.remove('border-red-600');
+                    document.body.style.color = '#00ff41';
+                }
+
                 if (data.caseSolved) {
-                    const allCities = ["Neo-Kowloon", "The Zone", "Solaris District", "Trantor Deep", "Ubik Reality", "Magrathea Heights"];
-                    const nextCity = allCities.find(c => !this.unlockedCities.includes(c));
-                    if (nextCity) {
-                        this.unlockedCities.push(nextCity);
-                        data.narrative += `\n\n[SYSTEM]: CASE CLOSED. ${nextCity.toUpperCase()} ACCESS GRANTED.`;
+                    const locked = this.allCities.filter(c => !this.unlockedCities.includes(c));
+                    if (locked.length > 0) {
+                        this.unlockedCities.push(locked[0]);
+                        data.narrative += `\n\n[SYSTEM]: NEW SECTOR UNLOCKED: ${locked[0].toUpperCase()}.`;
                     }
                 }
 
-                this.history.push({ role: 'user', content: action });
+                this.history.push({ role: 'user', content: action || "Start" });
                 this.history.push({ role: 'model', content: data.narrative });
 
                 if (data.imageUrl) {
@@ -213,18 +275,16 @@
                 
                 await this.typeText(data.narrative);
 
-                if (data.uiLocked) {
-                    this.ui.choices.classList.add('hidden');
-                    this.ui.puzzle.classList.remove('hidden');
-                    document.getElementById('puzzle-input').placeholder = data.puzzleQuestion || "SOLVE...";
-                    document.getElementById('puzzle-input').focus();
+                this.ui.choices.innerHTML = '';
+                if(data.isGameOver) {
+                    this.ui.choices.innerHTML = `<button onclick="location.reload()" class="choice-btn col-span-2 text-red-500 border-red-500">FLATLINED // REBOOT</button>`;
                 } else {
-                    this.ui.puzzle.classList.add('hidden');
-                    this.ui.choices.classList.remove('hidden');
-                    this.ui.choices.innerHTML = '';
                     data.choices.forEach(c => {
                         const btn = document.createElement('button');
                         btn.className = "choice-btn border border-[#00ff41] p-3 text-left uppercase";
+                        // If in combat, make buttons red
+                        if(this.enemyStats) btn.className = "choice-btn border border-red-500 text-red-500 p-3 text-left uppercase hover:bg-red-900";
+                        
                         btn.innerText = `> ${c}`;
                         btn.onclick = () => this.makeTurn(c);
                         this.ui.choices.appendChild(btn);
@@ -233,7 +293,7 @@
 
             } catch (e) {
                 console.error(e);
-                this.ui.story.innerText = "CONNECTION LOST. REFRESH TO RETRY.";
+                this.ui.story.innerText = "CONNECTION FAILURE.";
             }
         }
 
@@ -242,7 +302,7 @@
             let h = '';
             for(let c of text) {
                 h += c;
-                this.ui.story.innerHTML = h + '<span class="animate-pulse">_</span>';
+                this.ui.story.innerHTML = h + '_';
                 await new Promise(r=>setTimeout(r, 5));
             }
             this.ui.story.innerHTML = h;
