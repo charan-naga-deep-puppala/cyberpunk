@@ -6,45 +6,66 @@
     <title>NEON PROTOCOL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
+        /* CORE STYLES */
         body { background-color: #050505; color: #00ff41; font-family: 'VT323', monospace; overflow: hidden; }
-        .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; }
-        @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
-        .crt-flicker { animation: flicker 0.15s infinite; }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
+        /* CRT SCANLINES */
+        .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; }
+        .crt-flicker { animation: flicker 0.15s infinite; }
+        @keyframes flicker { 0% { opacity: 0.97; } 50% { opacity: 0.95; } 100% { opacity: 0.97; } }
+        
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 6px; } 
+        ::-webkit-scrollbar-track { background: #001100; } 
+        ::-webkit-scrollbar-thumb { background: #004400; }
+        
+        /* UI COMPONENTS */
         .panel { border: 1px solid #004400; background: rgba(0, 10, 0, 0.95); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-        .btn-main { border: 1px solid #00ff41; padding: 12px; text-align: left; transition: all 0.2s; cursor: pointer; text-transform: uppercase; font-size: 1.2rem; background: #001100; color: #00ff41; }
+        .btn-main { border: 1px solid #00ff41; padding: 12px; text-align: center; transition: all 0.2s; cursor: pointer; text-transform: uppercase; font-size: 1.2rem; background: #001100; color: #00ff41; }
         .btn-main:hover:not(:disabled) { background: #00ff41; color: black; transform: scale(1.02); }
         .btn-main:disabled { opacity: 0.3; cursor: not-allowed; border-color: #444; color: #444; }
         
+        /* TABS */
         .tab-btn { flex: 1; text-align: center; border-bottom: 2px solid #004400; color: #004400; cursor: pointer; padding: 8px; font-size: 1.1rem; }
         .tab-btn.active { border-bottom-color: #00ff41; color: #00ff41; }
         
+        /* CARDS */
         .char-card { border: 1px solid #004400; padding: 20px; cursor: pointer; transition: all 0.2s; opacity: 0.7; }
         .char-card:hover { border-color: #00ff41; opacity: 1; background: #002200; }
         .char-card.selected { border-color: #00ff41; background: #003300; opacity: 1; box-shadow: 0 0 15px rgba(0,255,65,0.2); }
         
+        /* OVERLAYS */
         .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.98); z-index: 100; display: flex; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* Prose Font */
-        #story-log { font-family: 'Georgia', serif; font-size: 1.3rem; line-height: 1.6; color: #e0e0e0; }
+        /* FONTS */
+        #story-log { font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; line-height: 1.6; color: #e0e0e0; }
         
+        /* GAME OVER */
         #game-over-screen { background: rgba(50, 0, 0, 0.95); border: 4px solid red; }
 
-        /* PIXEL ART */
-        .pixel-heart { display: inline-block; width: 14px; height: 14px; background: red; margin-right: 2px; box-shadow: 1px 1px 0 #500; }
-        .pixel-heart.empty { background: #330000; box-shadow: none; }
-        .pixel-coin { display: inline-block; width: 8px; height: 14px; background: yellow; margin-right: 2px; border-radius: 2px; }
+        /* PIXEL ART STATS */
+        .heart-icon { width: 16px; height: 16px; display: inline-block; margin-right: 2px; background-size: cover; image-rendering: pixelated; }
+        .heart-full { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" d="M2 2h2v2H2zM6 2h2v2H6zM1 4h2v2H1zM7 4h2v2H7zM2 6h6v2H2zM3 8h4v2H3z"/></svg>'); }
+        .heart-empty { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23330000" d="M2 2h2v2H2zM6 2h2v2H6zM1 4h2v2H1zM7 4h2v2H7zM2 6h6v2H2zM3 8h4v2H3z"/></svg>'); }
         
+        .core-icon { width: 16px; height: 16px; display: inline-block; margin-right: 2px; border: 2px solid #00ffff; background: #00ffff; box-shadow: 0 0 5px #00ffff; }
+        .core-empty { background: transparent; border-color: #004444; box-shadow: none; }
+
+        .pixel-coin { display: inline-block; width: 8px; height: 14px; background: #ffee00; margin-right: 2px; border-radius: 2px; }
+        
+        /* LIST ITEMS */
         .npc-item { font-size: 1rem; border: 1px solid #004400; padding: 8px; cursor: pointer; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
         .npc-item:hover { background: #002200; border-color: #00ff41; }
         .npc-icon { width: 24px; height: 24px; background: #003300; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
+        
         .inv-item { font-size: 1.1rem; padding: 6px; border-bottom: 1px dashed #004400; cursor: help; }
         .inv-item:hover { color: #ccffcc; background: #002200; }
+
+        .loot-item { border: 1px solid #ffff00; color: #ffff00; padding: 8px; margin-top: 5px; cursor: pointer; text-align: center; background: rgba(50,50,0,0.5); font-weight: bold; }
+        .loot-item:hover { background: #555500; }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col p-2 crt-flicker gap-2 select-none">
@@ -52,7 +73,7 @@
     <div class="scanlines"></div>
 
     <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80 shrink-0 relative z-50">
-        <span>NEON_PROTOCOL // V.23.0</span>
+        <span>NEON_PROTOCOL // V.25.0</span>
         <span id="current-loc-display" class="text-yellow-400">LOC: SYSTEM_BOOT</span>
     </div>
 
@@ -88,17 +109,17 @@
             <div class="char-card" onclick="selectArchetype('RAVEN', this)">
                 <h2 class="text-3xl font-bold mb-2">RAVEN</h2>
                 <p class="text-lg text-gray-400">Class: Detective</p>
-                <p class="text-sm mt-2">Dilemma: Justice vs. Morality. Starts in Neo-Kowloon.</p>
+                <p class="text-sm mt-2">Dilemma: Justice vs. Morality. Neo-Kowloon.</p>
             </div>
             <div class="char-card" onclick="selectArchetype('I-6', this)">
                 <h2 class="text-3xl font-bold mb-2">UNIT I-6</h2>
                 <p class="text-lg text-gray-400">Class: Rogue AI</p>
-                <p class="text-sm mt-2">Theme: Nihilism. Starts in Scrapyard.</p>
+                <p class="text-sm mt-2">Theme: Nihilism. The Scrapyard.</p>
             </div>
             <div class="char-card" onclick="selectArchetype('CUSTOM', this)">
                 <h2 class="text-3xl font-bold mb-2">THE ANOMALY</h2>
                 <p class="text-lg text-gray-400">Class: Custom</p>
-                <p class="text-sm mt-2">Write your own origin story.</p>
+                <p class="text-sm mt-2">Unknown Origin.</p>
             </div>
         </div>
 
@@ -127,8 +148,8 @@
         
         <div class="panel md:col-span-3 text-lg">
             <div class="flex flex-col gap-2 border-b border-[#004400] pb-4">
-                <div class="text-[#00ff41] font-bold text-sm">INTEGRITY</div>
-                <div id="pixel-hp" class="flex flex-wrap gap-1 min-h-[14px]"></div>
+                <div class="text-[#00ff41] font-bold text-sm">VITALITY</div>
+                <div id="pixel-hp" class="flex flex-wrap gap-1 min-h-[16px]"></div>
                 <div class="text-yellow-400 font-bold text-sm mt-2">CREDITS</div>
                 <div id="pixel-cred" class="flex flex-wrap gap-1 min-h-[14px]"></div>
             </div>
@@ -148,8 +169,9 @@
         </div>
 
         <div class="panel md:col-span-6 overflow-hidden relative">
-            <div id="img-container" class="h-72 border border-[#004400] bg-black flex items-center justify-center overflow-hidden shrink-0">
+            <div id="img-container" class="h-72 border border-[#004400] bg-black flex items-center justify-center overflow-hidden shrink-0 relative">
                 <span class="opacity-50 text-xl">NO SIGNAL</span>
+                <img id="avatar-display" class="hidden absolute top-2 left-2 w-16 h-16 border border-[#00ff41] bg-black z-20 object-cover">
             </div>
             
             <div id="enemy-hud" class="hidden border border-red-600 bg-[#1a0000] p-2 flex-col">
@@ -159,7 +181,13 @@
                 <div class="w-full h-3 bg-[#330000] mt-1"><div id="enemy-bar" class="h-full bg-red-600 w-full transition-all"></div></div>
             </div>
 
-            <div id="story-log" class="flex-1 overflow-y-auto p-4 text-xl"></div>
+            <div id="story-log" class="flex-1 overflow-y-auto p-4 text-xl relative">
+                </div>
+
+            <div id="loot-area" class="hidden p-2 border-t border-yellow-500 bg-[#1a1a00] z-20">
+                <div class="text-yellow-500 text-xs font-bold">SCANNER: OBJECTS DETECTED</div>
+                <div id="loot-list" class="flex gap-2 flex-wrap"></div>
+            </div>
 
             <div id="choices-area" class="grid grid-cols-2 gap-3 mt-2 pt-2 border-t border-[#004400]"></div>
             
@@ -204,6 +232,16 @@
         </div>
     </div>
 
+    <div id="overlay-help" class="overlay hidden">
+        <div class="panel w-full max-w-3xl h-3/4 border-gray-400 relative z-50">
+            <div class="flex justify-between border-b border-gray-400 pb-2"><h2 class="text-xl text-gray-400">DATABASE</h2><button onclick="closeOverlay('overlay-help')" class="text-gray-400">[X]</button></div>
+            <div class="grid grid-cols-3 gap-4 h-full overflow-hidden p-2">
+                <div class="col-span-1 border-r border-[#004400] flex flex-col gap-2 overflow-y-auto" id="help-topics"></div>
+                <div class="col-span-2 p-2 overflow-y-auto text-sm" id="help-content">Select a topic.</div>
+            </div>
+        </div>
+    </div>
+
     <script>
     // --- LORE DATABASE ---
     const DB_LORE = {
@@ -227,12 +265,13 @@
         enemyStats: null,
         activeTab: 'weapons',
         profile: {},
-        knownCharacters: []
+        knownCharacters: [],
+        availableItems: []
     };
 
     let selectedArch = null;
 
-    // --- SCREEN NAVIGATION ---
+    // --- NAVIGATION ---
     function setLanguage(lang) {
         state.lang = lang;
         document.getElementById('screen-language').classList.add('hidden');
@@ -271,7 +310,6 @@
     }
 
     function initGame() {
-        // Setup Profile
         if (selectedArch === 'RAVEN') {
             state.profile = { name: "Raven", archetype: "RAVEN", class: "Detective", style: "Noir trenchcoat, smoking" };
             state.inventory.weapons.push("Service Revolver");
@@ -303,7 +341,7 @@
         makeTurn("");
     }
 
-    // --- GAMEPLAY LOGIC ---
+    // --- GAME LOGIC ---
     async function makeTurn(action) {
         const choicesDiv = document.getElementById('choices-area');
         choicesDiv.innerHTML = '<div class="text-[#00ff41] animate-pulse col-span-2 text-xl">UPLINKING...</div>';
@@ -329,15 +367,17 @@
             const data = await res.json();
             state.turnCount = data.turnCount;
             
-            // Sync Data
+            // Sync Stats
             if (data.stats) { state.stats = data.stats; renderStats(); }
             
+            // Sync Location
             if (data.currentCity) {
                 state.currentCity = data.currentCity;
                 if(!state.unlockedCities.includes(data.currentCity)) state.unlockedCities.push(data.currentCity);
                 document.getElementById('current-loc-display').innerText = `LOC: ${state.currentCity.toUpperCase()}`;
             }
 
+            // Sync Inventory
             if (data.inventoryUpdates && data.inventoryUpdates.add) {
                 data.inventoryUpdates.add.forEach(i => {
                     if(state.inventory[i.category]) state.inventory[i.category].push(i.item);
@@ -345,6 +385,7 @@
                 renderInventory();
             }
 
+            // Sync Characters
             if (data.newCharacters) {
                 data.newCharacters.forEach(nc => {
                     if (!state.knownCharacters.some(k => k.name === nc.name)) state.knownCharacters.push(nc);
@@ -352,12 +393,41 @@
                 renderCharacters();
             }
 
+            // Available Items / Looting
+            const lootArea = document.getElementById('loot-area');
+            const lootList = document.getElementById('loot-list');
+            if (data.availableItems && data.availableItems.length > 0) {
+                lootArea.classList.remove('hidden');
+                lootList.innerHTML = '';
+                data.availableItems.forEach(item => {
+                    const btn = document.createElement('div');
+                    btn.className = 'loot-item';
+                    btn.innerHTML = `[PICK UP] ${item.name}`;
+                    btn.title = item.description;
+                    btn.onclick = () => {
+                        // Optimistic update
+                        btn.remove();
+                        if(lootList.children.length === 0) lootArea.classList.add('hidden');
+                        makeTurn(`I take the ${item.name}.`);
+                    };
+                    lootList.appendChild(btn);
+                });
+            } else {
+                lootArea.classList.add('hidden');
+            }
+
             // Update Log
             state.history.push({ role: 'user', content: action || "Start" });
             state.history.push({ role: 'model', content: data.narrative });
 
+            // Images & Avatar
+            if (state.history.length <= 2 && data.imageUrl) {
+                const avatar = document.getElementById('avatar-display');
+                avatar.src = data.imageUrl;
+                avatar.classList.remove('hidden');
+            }
             if (data.imageUrl) document.getElementById('img-container').innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 sepia-[.5] hue-rotate-90 contrast-125">`;
-            
+
             typeText(data.narrative);
 
             // Combat State
@@ -379,6 +449,9 @@
             if(data.isGameOver) {
                 document.getElementById('screen-gameover').classList.remove('hidden');
                 document.getElementById('screen-gameover').classList.add('flex');
+                // Trigger summary on death
+                document.getElementById('overlay-summary').classList.remove('hidden');
+                fetchSummary();
             } else if(data.uiLocked) {
                 document.getElementById('puzzle-area').classList.remove('hidden');
                 document.getElementById('puzzle-in').placeholder = data.puzzleQuestion || "SOLVE...";
@@ -398,9 +471,7 @@
     // --- RENDERERS ---
     async function typeText(text) {
         const el = document.getElementById('story-log');
-        // CLEAR TEXT FOR CLEAN "PAGE TURN" EFFECT
-        el.innerHTML = '';
-        
+        el.innerHTML = ''; // Clean page turn
         const newEntry = document.createElement('div');
         el.appendChild(newEntry);
         
@@ -417,11 +488,19 @@
         const hpContainer = document.getElementById('pixel-hp');
         hpContainer.innerHTML = '';
         const hearts = Math.ceil(state.stats.hp / 10);
+        
+        // DYNAMIC ICONS
+        const isRobot = (state.profile.archetype === 'I-6');
+        const iconClass = isRobot ? 'core-icon' : 'heart-icon';
+        const emptyClass = isRobot ? 'core-empty' : 'heart-empty';
+        const fillClass = isRobot ? '' : 'heart-full';
+
         for(let i=0; i<10; i++) {
             const h = document.createElement('div');
-            h.className = `pixel-heart ${i < hearts ? '' : 'empty'}`;
+            h.className = `${iconClass} ${i < hearts ? fillClass : emptyClass}`;
             hpContainer.appendChild(h);
         }
+
         const credContainer = document.getElementById('pixel-cred');
         credContainer.innerHTML = '';
         const coins = Math.min(20, Math.ceil(state.stats.credits / 10));
@@ -461,8 +540,9 @@
             const div = document.createElement('div');
             div.className = 'inv-item';
             div.innerText = item;
+            div.title = "Item present in inventory";
             div.onmouseenter = () => {
-                const desc = DB_LORE[item] || "No data available in database.";
+                const desc = DB_LORE[item] || "No database entry.";
                 document.getElementById('item-info').innerText = desc;
             };
             list.appendChild(div);
@@ -489,7 +569,7 @@
 
     async function fetchSummary() {
         const el = document.getElementById('summary-text');
-        el.innerText = "DECRYPTING...";
+        el.innerText = "DECRYPTING ARCHIVES...";
         try {
             const res = await fetch('/api/summary', {
                 method: 'POST',
@@ -501,6 +581,7 @@
         } catch(e) { el.innerText = "ERROR."; }
     }
 
+    // --- UTILS ---
     function switchInvTab(tab, el) {
         state.activeTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -517,6 +598,8 @@
         document.getElementById('puzzle-in').value = '';
         makeTurn(`Puzzle Answer: ${val}`);
     }
+    
+    // Help Button Logic (was missing in main HTML body, added via JS dynamic bind if needed, or rely on hover)
     </script>
 </body>
 </html>
