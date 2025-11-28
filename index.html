@@ -15,16 +15,9 @@
         .crt-flicker { animation: flicker 0.15s infinite; }
         ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #001100; } ::-webkit-scrollbar-thumb { background: #004400; }
         
-        /* Button Styles */
-        .choice-btn { border: 1px solid #00ff41; padding: 0.75rem; text-align: left; transition: all 0.2s; text-transform: uppercase; }
         .choice-btn:hover:not(:disabled) { background-color: #00ff41; color: #000; cursor: pointer; }
-        .choice-btn:disabled { opacity: 0.3; border-color: #444; color: #444; cursor: not-allowed; }
-        
+        .choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .hud-box { border: 1px solid #004400; background: #001100; padding: 0 8px; }
-
-        /* Puzzle Input Styles */
-        #puzzle-input { background: #001100; border: 1px solid #00ff41; color: #00ff41; padding: 8px; font-family: 'VT323'; width: 100%; }
-        #puzzle-input:focus { outline: none; background: #002200; }
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center crt-flicker">
@@ -33,42 +26,69 @@
         <div class="scanlines"></div>
         
         <div class="flex justify-between border-b border-[#00ff41] pb-1 text-xl opacity-80">
-            <span>NEON_PROTOCOL // V.4.0</span>
+            <span>NEON_PROTOCOL // V.5.0 // CHAR_GEN</span>
             <span id="status-indicator">CONNECTED</span>
         </div>
 
-        <div class="flex flex-row justify-between text-lg gap-2">
-            <div class="hud-box flex-1 flex justify-between"><span>VITALS:</span><span id="hp-display" class="text-red-500">100%</span></div>
-            <div class="hud-box flex-1 flex justify-between"><span>CREDS:</span><span id="credits-display" class="text-yellow-400">50</span></div>
-            <div class="hud-box flex-[2] overflow-hidden whitespace-nowrap text-ellipsis"><span class="opacity-70">INV: </span><span id="inv-display">ID Card</span></div>
+        <div id="char-creation-screen" class="flex-1 flex flex-col items-center justify-center gap-6 z-20 bg-black/90 absolute inset-0 m-4">
+            <h1 class="text-4xl text-[#00ff41] text-center tracking-widest animate-pulse">IDENTITY SPOOFING</h1>
+            
+            <div class="w-full max-w-md flex flex-col gap-4">
+                <div>
+                    <label class="block text-sm opacity-70 mb-1">HANDLE (NAME)</label>
+                    <input type="text" id="char-name" class="w-full bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none focus:bg-[#002200]" placeholder="e.g. Case, Molly, V">
+                </div>
+
+                <div>
+                    <label class="block text-sm opacity-70 mb-1">CLASS (ROLE)</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="class-btn border border-[#004400] p-2 hover:bg-[#00ff41] hover:text-black text-sm transition" data-val="Netrunner">NETRUNNER</button>
+                        <button class="class-btn border border-[#004400] p-2 hover:bg-[#00ff41] hover:text-black text-sm transition" data-val="Street Samurai">SAMURAI</button>
+                        <button class="class-btn border border-[#004400] p-2 hover:bg-[#00ff41] hover:text-black text-sm transition" data-val="Fixer">FIXER</button>
+                    </div>
+                    <input type="hidden" id="char-class" value="Netrunner">
+                </div>
+
+                <div>
+                    <label class="block text-sm opacity-70 mb-1">VISUAL STYLE</label>
+                    <input type="text" id="char-style" class="w-full bg-[#001100] border border-[#00ff41] p-2 text-[#00ff41] focus:outline-none focus:bg-[#002200]" placeholder="e.g. Chrome arm, trenchcoat, neon hair">
+                </div>
+
+                <button id="jack-in-btn" class="mt-4 border border-[#00ff41] p-3 hover:bg-[#00ff41] hover:text-black font-bold tracking-widest uppercase transition-all">
+                    ESTABLISH LINK
+                </button>
+            </div>
         </div>
 
-        <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative z-0">
-            <div class="w-full md:w-1/2 flex flex-col gap-2">
-                <div id="image-container" class="flex-1 border border-[#004400] bg-[#001100] relative overflow-hidden flex items-center justify-center">
-                    <span class="opacity-50 text-center animate-pulse">AWAITING LINK...</span>
+        <div id="game-ui" class="hidden flex-1 flex flex-col gap-4 h-full relative z-10">
+            <div class="flex flex-row justify-between text-lg gap-2">
+                <div class="hud-box flex-1 flex justify-between"><span>VITALS:</span><span id="hp-display" class="text-red-500">100%</span></div>
+                <div class="hud-box flex-1 flex justify-between"><span>CREDS:</span><span id="credits-display" class="text-yellow-400">50</span></div>
+                <div class="hud-box flex-[2] overflow-hidden whitespace-nowrap text-ellipsis"><span class="opacity-70">INV: </span><span id="inv-display">ID Card</span></div>
+            </div>
+
+            <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative">
+                <div class="w-full md:w-1/2 flex flex-col gap-2">
+                    <div id="image-container" class="flex-1 border border-[#004400] bg-[#001100] relative overflow-hidden flex items-center justify-center">
+                        <span class="opacity-50">INITIALIZING...</span>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/2 flex flex-col">
+                    <div id="story-text" class="flex-1 overflow-y-auto text-lg leading-relaxed whitespace-pre-line p-2 border-l border-[#004400]"></div>
                 </div>
             </div>
 
-            <div class="w-full md:w-1/2 flex flex-col">
-                <div id="story-text" class="flex-1 overflow-y-auto text-lg leading-relaxed whitespace-pre-line p-2 border-l border-[#004400]">
-                    System Initialized. 
+            <div id="interaction-area" class="border-t border-[#00ff41] pt-4 min-h-[120px]">
+                <div id="choice-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                
+                <div id="puzzle-container" class="hidden flex flex-col gap-2">
+                    <div class="text-red-500 animate-pulse">>> WARNING: NEURAL INTERFACE LOCKED <<</div>
+                    <div id="puzzle-question" class="text-[#00ff41] opacity-80 mb-2"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="puzzle-input" class="flex-1 bg-[#001100] border border-[#00ff41] text-[#00ff41] p-2 focus:outline-none" placeholder="TYPE SOLUTION..." autocomplete="off">
+                        <button id="submit-puzzle-btn" class="choice-btn border border-[#00ff41] p-2 text-[#00ff41]">TRANSMIT</button>
+                    </div>
                 </div>
-            </div>
-        </div>
-
-        <div id="interaction-area" class="border-t border-[#00ff41] pt-4 min-h-[120px]">
-            <div id="choice-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button id="start-btn" class="choice-btn col-span-2 text-center tracking-widest">INITIALIZE SIMULATION</button>
-            </div>
-
-            <div id="puzzle-container" class="hidden flex flex-col gap-2">
-                 <div class="text-red-500 animate-pulse">>> WARNING: NEURAL INTERFACE LOCKED. SOLVE TO RESTORE. <<</div>
-                 <div id="puzzle-question" class="text-[#00ff41] opacity-80 mb-2"></div>
-                 <div class="flex gap-2">
-                    <input type="text" id="puzzle-input" placeholder="TYPE SOLUTION..." autocomplete="off">
-                    <button id="submit-puzzle-btn" class="choice-btn">TRANSMIT</button>
-                 </div>
             </div>
         </div>
     </div>
@@ -76,151 +96,185 @@
     <script>
     class CyberpunkRPG {
         constructor() {
+            // UI Elements
+            this.screens = {
+                creation: document.getElementById('char-creation-screen'),
+                game: document.getElementById('game-ui')
+            };
+            
             this.storyContainer = document.getElementById('story-text');
             this.choiceContainer = document.getElementById('choice-container');
-            this.puzzleContainer = document.getElementById('puzzle-container');
-            this.puzzleInput = document.getElementById('puzzle-input');
-            this.puzzleQuestionDisplay = document.getElementById('puzzle-question');
             this.imageContainer = document.getElementById('image-container');
             this.statusIndicator = document.getElementById('status-indicator');
             
+            // HUD
             this.hpDisplay = document.getElementById('hp-display');
             this.creditsDisplay = document.getElementById('credits-display');
             this.invDisplay = document.getElementById('inv-display');
+            
+            // Puzzle
+            this.puzzleContainer = document.getElementById('puzzle-container');
+            this.puzzleInput = document.getElementById('puzzle-input');
+            this.puzzleQuestion = document.getElementById('puzzle-question');
 
-            this.isProcessing = false;
             this.history = [];
             this.stats = { hp: 100, credits: 50, inventory: ["ID Card"], uiLocked: false };
+            
+            // Player Profile
+            this.playerProfile = { name: "Unknown", class: "Citizen", style: "Standard" };
 
-            // Start Audio Engine
+            this.initAudio();
+            this.setupCreationScreen();
+            this.setupGameListeners();
+        }
+
+        setupCreationScreen() {
+            // Handle Class Selection
+            const classBtns = document.querySelectorAll('.class-btn');
+            classBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    classBtns.forEach(b => b.classList.remove('bg-[#00ff41]', 'text-black'));
+                    e.target.classList.add('bg-[#00ff41]', 'text-black');
+                    document.getElementById('char-class').value = e.target.getAttribute('data-val');
+                });
+            });
+
+            // Handle Start Button
+            document.getElementById('jack-in-btn').addEventListener('click', () => {
+                const name = document.getElementById('char-name').value || "Runner";
+                const role = document.getElementById('char-class').value || "Mercenary";
+                const style = document.getElementById('char-style').value || "Cybernetic enhancements";
+
+                this.playerProfile = { name, class: role, style };
+                
+                // Switch Screens
+                this.screens.creation.classList.add('hidden');
+                this.screens.game.classList.remove('hidden');
+                
+                this.startSound();
+                this.updateHUD();
+                
+                // Start the game with the profile data
+                this.makeTurn(`Initialize. My name is ${name}. I am a ${role} looking like ${style}. Begin the story in a bar.`);
+            });
+        }
+
+        setupGameListeners() {
+            document.getElementById('submit-puzzle-btn').addEventListener('click', () => this.submitPuzzle());
+            this.puzzleInput.addEventListener('keypress', (e) => { if(e.key==='Enter') this.submitPuzzle() });
+        }
+
+        submitPuzzle() {
+            const val = this.puzzleInput.value.trim();
+            if(!val) return;
+            this.puzzleInput.value = '';
+            this.makeTurn(`I answer the puzzle: ${val}`);
+        }
+
+        async initAudio() {
             this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
             this.noise = new Tone.Noise("brown").start();
             this.noise.volume.value = -Infinity;
             this.noise.toDestination();
-
-            this.setupEventListeners();
+            await Tone.start();
         }
-
-        setupEventListeners() {
-            document.getElementById('start-btn').addEventListener('click', () => {
-                this.noise.volume.rampTo(-45, 3);
-                this.synth.triggerAttackRelease(["C2", "G2"], "4n");
-                this.updateHUD(); 
-                this.makeTurn("Start the game. I am in my apartment.");
-            });
-
-            document.getElementById('submit-puzzle-btn').addEventListener('click', () => this.submitPuzzleAnswer());
-            this.puzzleInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') this.submitPuzzleAnswer(); });
-        }
-
-        submitPuzzleAnswer() {
-            const answer = this.puzzleInput.value.trim();
-            if (!answer) return;
-            this.puzzleInput.value = ''; 
-            this.makeTurn(`I answer the puzzle with: "${answer}"`);
-        }
-
-        updateHUD() {
-            this.hpDisplay.innerText = this.stats.hp + "%";
-            this.creditsDisplay.innerText = this.stats.credits;
-            this.invDisplay.innerText = this.stats.inventory.join(", ");
-            this.hpDisplay.className = this.stats.hp > 50 ? "text-[#00ff41]" : "text-red-600 font-bold crt-flicker";
-        }
-
-        setLoading(isLoading) {
-            this.isProcessing = isLoading;
-            this.statusIndicator.innerText = isLoading ? "PROCESSING..." : "CONNECTED";
-            this.statusIndicator.classList.toggle("animate-pulse", isLoading);
-            const choices = this.choiceContainer.querySelectorAll('button');
-            choices.forEach(b => b.disabled = isLoading);
-            document.getElementById('submit-puzzle-btn').disabled = isLoading;
-            this.puzzleInput.disabled = isLoading;
+        
+        startSound() {
+            this.noise.volume.rampTo(-45, 3);
+            this.synth.triggerAttackRelease(["C2", "E2"], "8n");
         }
 
         async makeTurn(userAction) {
-            if (this.isProcessing) return;
             this.setLoading(true);
-
             try {
+                // Pass playerProfile in every request. 
+                // NOTE: Using relative path '/api/turn' for cloud compatibility
                 const response = await fetch('/api/turn', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         history: this.history, 
-                        userAction: userAction, 
-                        currentStats: this.stats 
+                        userAction, 
+                        currentStats: this.stats,
+                        playerProfile: this.playerProfile 
                     })
                 });
 
                 const data = await response.json();
-
+                
                 if (data.stats) this.stats = data.stats;
-                this.stats.uiLocked = data.uiLocked || false; 
+                this.stats.uiLocked = data.uiLocked || false;
                 this.updateHUD();
 
                 this.history.push({ role: "user", content: userAction });
                 this.history.push({ role: "model", content: data.narrative });
 
                 if (data.imageUrl) {
-                    this.imageContainer.innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 border border-[#004400] filter sepia(50%) hue-rotate(90deg) contrast(120%)">`;
+                     this.imageContainer.innerHTML = `<img src="${data.imageUrl}" class="w-full h-full object-cover opacity-90 border border-[#004400] filter sepia(50%) hue-rotate(90deg) contrast(120%)">`;
                 }
-                
-                await this.typeText(data.narrative);
-                this.manageInterfaceState(data);
 
-            } catch (err) {
-                console.error(err);
-                this.storyContainer.innerText += "\n\n>> CONNECTION FAILURE.";
+                await this.typeText(data.narrative);
+                this.manageInterface(data);
+
+            } catch (e) {
+                console.error(e);
+                this.storyContainer.innerText += "\n\n>> CONNECTION ERROR. REFRESH TO RETRY.";
             } finally {
                 this.setLoading(false);
                 if(this.stats.uiLocked) this.puzzleInput.focus();
             }
         }
 
-        manageInterfaceState(data) {
+        manageInterface(data) {
             if (data.isGameOver) {
-                this.choiceContainer.classList.remove('hidden');
-                this.puzzleContainer.classList.add('hidden');
-                this.choiceContainer.innerHTML = `<button onclick="location.reload()" class="choice-btn col-span-2 border-red-500 text-red-500 hover:bg-red-900">FLATLINED // REBOOT SYSTEM</button>`;
+                this.choiceContainer.innerHTML = `<button onclick="location.reload()" class="choice-btn col-span-2 text-red-500 border-red-500">FLATLINED // REBOOT</button>`;
                 return;
             }
-
+            
             if (this.stats.uiLocked) {
                 this.choiceContainer.classList.add('hidden');
                 this.puzzleContainer.classList.remove('hidden');
-                this.puzzleQuestionDisplay.innerText = data.puzzleQuestion || ">> DECRYPT REQUIRED...";
+                this.puzzleQuestion.innerText = data.puzzleQuestion || ">> DECRYPT REQUIRED";
+                this.puzzleInput.focus();
             } else {
-                this.choiceContainer.classList.remove('hidden');
                 this.puzzleContainer.classList.add('hidden');
-                this.renderChoices(data.choices);
+                this.choiceContainer.classList.remove('hidden');
+                this.choiceContainer.innerHTML = '';
+                data.choices.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = "choice-btn border border-[#00ff41] p-3 text-left hover:bg-[#00ff41] hover:text-black uppercase";
+                    btn.innerText = `> ${c}`;
+                    btn.onclick = () => this.makeTurn(c);
+                    this.choiceContainer.appendChild(btn);
+                });
             }
         }
 
         async typeText(text) {
             this.storyContainer.innerHTML = '';
-            let currentHTML = '';
-            for (let char of text.split('')) {
-                currentHTML += char;
-                this.storyContainer.innerHTML = currentHTML + '<span class="animate-pulse">_</span>';
-                await new Promise(r => setTimeout(r, 10));
+            let h = '';
+            for(let c of text) {
+                h += c;
+                this.storyContainer.innerHTML = h + '<span class="animate-pulse">_</span>';
+                await new Promise(r=>setTimeout(r,10));
             }
-            this.storyContainer.innerHTML = currentHTML;
+            this.storyContainer.innerHTML = h;
+        }
+        
+        updateHUD() {
+            this.hpDisplay.innerText = this.stats.hp + "%";
+            this.creditsDisplay.innerText = this.stats.credits;
+            this.invDisplay.innerText = this.stats.inventory.join(", ");
         }
 
-        renderChoices(choices) {
-            this.choiceContainer.innerHTML = '';
-            choices.forEach(choiceText => {
-                const btn = document.createElement('button');
-                btn.className = "choice-btn";
-                btn.innerText = `> ${choiceText}`;
-                btn.onclick = () => this.makeTurn(choiceText);
-                this.choiceContainer.appendChild(btn);
-            });
+        setLoading(b) {
+            this.statusIndicator.innerText = b ? "PROCESSING..." : "CONNECTED";
+            this.statusIndicator.className = b ? "text-red-500 animate-pulse" : "text-[#00ff41]";
+            if(b) this.choiceContainer.innerHTML = '<div class="text-[#00ff41] animate-pulse">UPLINKING...</div>';
         }
     }
 
     const game = new CyberpunkRPG();
     </script>
 </body>
-
 </html>
