@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path'); // Fixed reference error
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
@@ -9,25 +10,45 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Initialize Google Gen AI
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+// --- WORLD DATA ---
+const CITIES = {
+    "Neo-Kowloon": "Rain. Neon. Noodle stands. Concrete.",
+    "The Scrapyard": "Rust. Fire. Metal crushers.",
+    "Solaris District": "Water. Glass. Strange lights.",
+    "Magrathea Heights": "Gold. Fake sun. Clean air.",
+    "Trantor Deep": "Metal walls. Pipes. Steam.",
+    "The Zone": "Trees. Radiation. Silence.",
+    "Ubik Reality": "Old houses. Fading colors. Decay.",
+    "Gargantus Space": "Void. Stars. Impossible shapes."
+};
+
+// --- SYSTEM PROMPT ---
 const SYSTEM_INSTRUCTION = `
 You are the Game Master of a Sci-Fi RPG.
 
-### WRITING STYLE (GEORGE ORWELL RULES):
-1. **Introduction (Turn 1):** detailed, atmospheric, establish the lore.
-2. **All Other Turns:** SHORT. PUNCHY.
-   - Never use a metaphor or simile.
-   - Never use a long word where a short one will do.
-   - If it is possible to cut a word out, always cut it out.
-   - Never use the passive voice.
-   - NO SOUND EFFECTS in text.
-3. **Format:** Use simple paragraphs.
+### WRITING RULES (STRICT ORWELLIAN):
+1. **Never use a metaphor, simile, or figure of speech.**
+2. **Never use a long word where a short one will do.**
+3. **If it is possible to cut a word out, always cut it out.**
+4. **Never use the passive where you can use the active.**
+5. **Use everyday English** (Scientific terms allowed only if necessary).
+6. **NO SOUND EFFECTS** (Do not write *click*, *bang*, etc).
+7. **FORMAT:** Write in clear paragraphs. No screenplay format.
+
+### STRUCTURE:
+- **INTRODUCTION (Turn 1):** Detailed, atmospheric, establish the lore.
+- **TURNS 2+:** Short. Punchy. Action and reaction.
+- **PERSPECTIVE:** Second person ("You see...", "You do...").
 
 ### MECHANICS:
-- **COMBAT:** Headshots/Core hits are fatal. Player death = "isGameOver": true.
-- **CHARACTERS:** If a NEW NPC appears, add to "newCharacters".
-- **LANGUAGE:** Respond ONLY in [LANGUAGE].
+1. **COMBAT:** Headshots or Core hits are fatal. Player death = "isGameOver": true.
+2. **LOOTING:** - If player sees items but hasn't taken them, list in "availableItems".
+   - If player takes items, put them in "inventoryUpdates" ("add").
+3. **CHARACTERS:** If a NEW NPC appears, add to "newCharacters".
+4. **LANGUAGE:** Respond ONLY in [LANGUAGE].
 
 JSON FORMAT:
 {
@@ -36,6 +57,7 @@ JSON FORMAT:
   "enemyName": "String or null",
   "inCombat": boolean,
   "enemyStats": { "name": "String", "hp": number, "maxHp": number } OR null,
+  "availableItems": [ { "name": "Item Name", "type": "weapons|items|memories", "description": "Short desc" } ] OR null,
   "newCharacters": [ { "name": "Name", "description": "Visual details..." } ] OR null,
   "choices": ["Opt1", "Opt2"], 
   "caseSolved": boolean,
@@ -45,32 +67,38 @@ JSON FORMAT:
 }
 `;
 
-// --- NATIVE GEMINI IMAGE GENERATION ---
+// --- IMAGE GENERATION (NATIVE GEMINI 2.5) ---
 async function generateGeminiImage(prompt) {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-image", 
-            contents: "Create a cyberpunk noir style illustration: " + prompt,
+            contents: "Create a cyberpunk noir style illustration, cinematic lighting, image should be slightly grainy: " + prompt,
         });
+        
         for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            if (part.inlineData) {
+                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            }
         }
         return null;
     } catch (error) {
-        console.error("Image Gen Error:", error);
+        console.error("Image Gen Error:", error.message);
+        // Fallback placeholder if API fails
         return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+DATA+CORRUPT";
     }
 }
 
+// --- MAIN TURN ENDPOINT ---
 app.post('/api/turn', async (req, res) => {
     try {
-        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory, turnCount } = req.body;
+        let { history, userAction, currentStats, playerProfile, currentCity, enemyStats, language, inventory, turnCount, maxTurns } = req.body;
         
         if (!turnCount) turnCount = 0;
         turnCount++;
 
-        // --- ORIGIN STORY LOGIC ---
+        // Origin Story Logic
         if (history.length === 0) {
+            turnCount = 1;
             if (playerProfile.archetype === "RAVEN") {
                 currentCity = "Neo-Kowloon";
                 userAction = "I am Raven. I sit in my office at the Precinct. I review the files on the new murder case.";
@@ -79,21 +107,24 @@ app.post('/api/turn', async (req, res) => {
                 userAction = "I am Unit I-6. My systems reboot. I lie on a conveyor belt moving toward a furnace. I must escape.";
             } else if (playerProfile.archetype === "GARGANTUS") {
                 currentCity = "Gargantus Space";
-                userAction = "I approach the anomaly. The sensors scream. Logic fails here.";
+                userAction = "I approach the anomaly. The ship sensors fail. I look out the viewport.";
             } else {
                 currentCity = "Neo-Kowloon";
                 userAction = `I am ${playerProfile.name}, a ${playerProfile.class}. ${playerProfile.backstory}`;
             }
         }
 
+        const cityVibe = CITIES[currentCity] || "Cyberpunk City";
+        
         let fullPrompt = `SYSTEM: ${SYSTEM_INSTRUCTION}\n`;
-        fullPrompt += `LANGUAGE: ${language}\n`;
-        fullPrompt += `CONTEXT: Turn ${turnCount}. Player: ${playerProfile.name} (${playerProfile.class}). Location: ${currentCity}.\n`;
+        fullPrompt += `LANGUAGE: ${language || 'English'}\n`;
+        fullPrompt += `CONTEXT: Turn ${turnCount}/${maxTurns}. Player: ${playerProfile.name} (${playerProfile.class}). Location: ${currentCity} (${cityVibe}).\n`;
         fullPrompt += `STATUS: HP=${currentStats.hp}. Inventory: ${JSON.stringify(inventory)}\n`;
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
         fullPrompt += `HISTORY:\n`;
-        history.slice(-6).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
+        // Keep context window manageable
+        history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
@@ -104,10 +135,19 @@ app.post('/api/turn', async (req, res) => {
 
         const gameData = JSON.parse(textResponse.text());
 
+        // Check for Forced Ending
+        if (turnCount >= maxTurns && !gameData.isGameOver) {
+            gameData.narrative += "\n\n[SYSTEM]: SIMULATION LIMIT REACHED. NARRATIVE CONCLUDED.";
+            gameData.isGameOver = true;
+        }
+
         // Image Logic
         let finalImageUrl = "";
-        if (history.length === 0) {
-            finalImageUrl = await generateGeminiImage(`Portrait of ${playerProfile.name}, ${playerProfile.style}, inside ${currentCity}`);
+        const isFirstTurn = history.length === 0;
+
+        if (isFirstTurn) {
+            // Avatar Generation
+            finalImageUrl = await generateGeminiImage(`Pixel art portrait of ${playerProfile.name}, ${playerProfile.style}, 8-bit style, green monochrome background`);
         } else if (gameData.enemyName) {
             finalImageUrl = await generateGeminiImage("Character portrait of " + gameData.visual_prompt);
         } else if (gameData.inCombat) {
@@ -124,10 +164,11 @@ app.post('/api/turn', async (req, res) => {
 
     } catch (error) {
         console.error("Server Error:", error);
-        res.status(500).json({ narrative: "System Failure.", choices: ["Retry"], stats: req.body.currentStats });
+        res.status(500).json({ narrative: "System Failure. Connection Lost.", choices: ["Retry"], stats: req.body.currentStats });
     }
 });
 
+// --- SUMMARY ENDPOINT ---
 app.post('/api/summary', async (req, res) => {
     try {
         const { history, language } = req.body;
