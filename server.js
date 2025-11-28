@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path'); // Fixed reference error
+const path = require('path');
 const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
@@ -10,7 +10,6 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Google Gen AI
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // --- WORLD DATA ---
@@ -34,19 +33,18 @@ You are the Game Master of a Sci-Fi RPG.
 2. **Never use a long word where a short one will do.**
 3. **If it is possible to cut a word out, always cut it out.**
 4. **Never use the passive where you can use the active.**
-5. **Use everyday English** (Scientific terms allowed only if necessary).
-6. **NO SOUND EFFECTS** (Do not write *click*, *bang*, etc).
-7. **FORMAT:** Write in clear paragraphs. No screenplay format.
+5. **Use everyday English.**
+6. **NO SOUND EFFECTS.**
+7. **FORMAT:** Write in clear paragraphs.
 
 ### STRUCTURE:
-- **INTRODUCTION (Turn 1):** Detailed, atmospheric, establish the lore.
-- **TURNS 2+:** Short. Punchy. Action and reaction.
-- **PERSPECTIVE:** Second person ("You see...", "You do...").
+- **Turn 1 (Intro):** Detailed, atmospheric, establish lore.
+- **Turns 2+:** Short. Punchy. Action/Reaction.
 
 ### MECHANICS:
-1. **COMBAT:** Headshots or Core hits are fatal. Player death = "isGameOver": true.
-2. **LOOTING:** - If player sees items but hasn't taken them, list in "availableItems".
-   - If player takes items, put them in "inventoryUpdates" ("add").
+1. **COMBAT:** Headshots/Core hits are fatal. Player death = "isGameOver": true.
+2. **LOOTING:** - If player *sees* items but hasn't taken them: List in "availableItems".
+   - If player *takes* an item (e.g. "I take the gun"): List in "inventoryUpdates" -> "add".
 3. **CHARACTERS:** If a NEW NPC appears, add to "newCharacters".
 4. **LANGUAGE:** Respond ONLY in [LANGUAGE].
 
@@ -67,12 +65,25 @@ JSON FORMAT:
 }
 `;
 
-// --- IMAGE GENERATION (NATIVE GEMINI 2.5) ---
+// --- HELPER: ROBUST TEXT EXTRACTION ---
+// This fixes the "text is not a function" error
+function extractText(response) {
+    if (typeof response.text === 'function') {
+        return response.text();
+    } else if (typeof response.text === 'string') {
+        return response.text;
+    } else if (response.candidates && response.candidates[0].content.parts[0].text) {
+        return response.candidates[0].content.parts[0].text;
+    }
+    return "{}"; // Return empty JSON object string if failure
+}
+
+// --- IMAGE GENERATION ---
 async function generateGeminiImage(prompt) {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-image", 
-            contents: "Create a cyberpunk noir style illustration, cinematic lighting, image should be slightly grainy: " + prompt,
+            contents: "Create a cyberpunk noir style illustration, cinematic lighting, grainy image: " + prompt,
         });
         
         for (const part of response.candidates[0].content.parts) {
@@ -83,7 +94,6 @@ async function generateGeminiImage(prompt) {
         return null;
     } catch (error) {
         console.error("Image Gen Error:", error.message);
-        // Fallback placeholder if API fails
         return "https://placehold.co/600x400/000000/00ff41?text=VISUAL+DATA+CORRUPT";
     }
 }
@@ -123,7 +133,6 @@ app.post('/api/turn', async (req, res) => {
         if (enemyStats) fullPrompt += `ENEMY: ${enemyStats.name} (HP: ${enemyStats.hp})\n`;
         
         fullPrompt += `HISTORY:\n`;
-        // Keep context window manageable
         history.slice(-8).forEach(t => fullPrompt += `${t.role.toUpperCase()}: ${t.content}\n`);
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
@@ -133,9 +142,11 @@ app.post('/api/turn', async (req, res) => {
             config: { responseMimeType: 'application/json' }
         });
 
-        const gameData = JSON.parse(textResponse.text());
+        // USE NEW EXTRACTOR
+        const rawText = extractText(textResponse);
+        const gameData = JSON.parse(rawText);
 
-        // Check for Forced Ending
+        // Forced Ending
         if (turnCount >= maxTurns && !gameData.isGameOver) {
             gameData.narrative += "\n\n[SYSTEM]: SIMULATION LIMIT REACHED. NARRATIVE CONCLUDED.";
             gameData.isGameOver = true;
@@ -146,7 +157,6 @@ app.post('/api/turn', async (req, res) => {
         const isFirstTurn = history.length === 0;
 
         if (isFirstTurn) {
-            // Avatar Generation
             finalImageUrl = await generateGeminiImage(`Pixel art portrait of ${playerProfile.name}, ${playerProfile.style}, 8-bit style, green monochrome background`);
         } else if (gameData.enemyName) {
             finalImageUrl = await generateGeminiImage("Character portrait of " + gameData.visual_prompt);
@@ -179,8 +189,13 @@ app.post('/api/summary', async (req, res) => {
             model: 'gemini-2.5-flash', 
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
-        res.json({ summary: textResponse.text() });
+        
+        // USE NEW EXTRACTOR
+        const summaryText = extractText(textResponse);
+        res.json({ summary: summaryText });
+
     } catch (error) {
+        console.error("Summary Error:", error);
         res.status(500).json({ summary: "Data corrupted." });
     }
 });
