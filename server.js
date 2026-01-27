@@ -38,6 +38,11 @@ You are the Game Master of a Sci-Fi RPG.
 4. **NO SOUND EFFECTS.**
 5. **Format:** Clear paragraphs.
 
+##Humour:
+Add Slapstick humour to a few robots. like From TARS in Interstellar. say like the robot has dream to to buy lithium ion battery but the loan interest rates are too high so he is stuck with mercury battery.
+
+Sprinkle a Few comedic Gags, can be a bit coarse. but keep the tone serious.
+
 ### MECHANICS:
 1. **COMBAT:** Headshots or Core hits are fatal. Player death = "isGameOver": true.
 2. **LOOTING:** - If items are *seen* but not taken: List in "availableItems".
@@ -137,7 +142,7 @@ app.post('/api/turn', async (req, res) => {
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview', 
+            model: 'gemini-2.0-flash-lite', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
@@ -205,6 +210,7 @@ app.post('/api/summary', async (req, res) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.listen(port, () => console.log(`Server running on port ${port}`));
+
 
 
 
