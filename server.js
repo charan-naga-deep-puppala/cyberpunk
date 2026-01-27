@@ -82,7 +82,7 @@ function extractJSON(response) {
 async function generateGeminiImage(prompt) {
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-lite-preview-09-2025", 
+            model: "gemini-3-flash-preview", 
             contents: "Create a cyberpunk noir style illustration, cinematic lighting, dark, grainy: " + prompt,
         });
         
@@ -137,7 +137,7 @@ app.post('/api/turn', async (req, res) => {
         fullPrompt += `PLAYER ACTION: ${userAction}\nGM (JSON):`;
 
         const textResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', 
+            model: 'gemini-3-flash-preview', 
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             config: { responseMimeType: 'application/json' }
         });
@@ -205,6 +205,7 @@ app.post('/api/summary', async (req, res) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.listen(port, () => console.log(`Server running on port ${port}`));
+
 
 
 
